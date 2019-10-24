@@ -32,7 +32,6 @@ class ParserHelper(argparse.ArgumentParser):
         self.print_help()
         sys.exit(2)
 
-# TODO check os
 def get_os():
   return platform.system()
 
@@ -62,7 +61,6 @@ def create_config():
                         dest = 'out_folder',
                         default = r'./Output',
                         action = 'store')
-    #TODO change tmp to Output/tmp check resource_path important for windows
     parser.add_argument(
                         '-cal',
                         help = 'cal file',
@@ -157,7 +155,6 @@ def create_config():
         config.write(conf)
     return config
 
-# TODO fix mv resource_path to main for pynstaller
 # /Users/anfossat/Desktop/PCProphet_clean/ PCProphet
 def main():
     config = create_config()
@@ -166,27 +163,27 @@ def main():
     files = io.read_sample_ids(config['GLOBAL']['sid'])
     files = [os.path.abspath(x) for x in files.keys()]
     for infile in files:
-        # validate.InputTester(infile, 'in').test_file()
-        # map_to_database.runner(
-        #                      infile=infile,
-        #                      db=config['GLOBAL']['db'],
-        #                      is_ppi=config['PREPROCESS']['is_ppi'],
-        #                      use_fr=config['PREPROCESS']['all_fract'])
-        # hypothesis.runner(
-        #                   infile=infile,
-        #                   hypothesis=config['PREPROCESS']['merge'],
-        #                   max_hypothesis=config['PREPROCESS']['max_hypothesis'],
-        #                   use_fr=config['PREPROCESS']['all_fract'])
+        validate.InputTester(infile, 'in').test_file()
+        map_to_database.runner(
+                             infile=infile,
+                             db=config['GLOBAL']['db'],
+                             is_ppi=config['PREPROCESS']['is_ppi'],
+                             use_fr=config['PREPROCESS']['all_fract'])
+        hypothesis.runner(
+                          infile=infile,
+                          hypothesis=config['PREPROCESS']['merge'],
+                          max_hypothesis=config['PREPROCESS']['max_hypothesis'],
+                          use_fr=config['PREPROCESS']['all_fract'])
         # # #
         tmp_folder = io.file2folder(infile, prefix='./tmp/')
-        # merge.runner(
-        #              base=tmp_folder,
-        #              mergemode=config['PREPROCESS']['merge'])
-        #
-        # generate_features.runner(
-        #                          tmp_folder,
-        #                          config['GLOBAL']['go_obo'],
-        #                          config['GLOBAL']['sp_go'])
+        merge.runner(
+                     base=tmp_folder,
+                     mergemode=config['PREPROCESS']['merge'])
+
+        generate_features.runner(
+                                 tmp_folder,
+                                 config['GLOBAL']['go_obo'],
+                                 config['GLOBAL']['sp_go'])
         # # assert False
         predict.runner(tmp_folder)
     collapse.runner(
