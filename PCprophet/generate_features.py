@@ -1,16 +1,200 @@
-#!/usr/bin/env python3
-
 import re
 import sys
 import os
 import numpy as np
 from scipy import stats
 import pandas as pd
+from scipy.ndimage import uniform_filter
 
 import PCProphet.signal_prc as preproc
 import PCProphet.parse_go as go
 import PCProphet.io_ as io
 import PCProphet.stats_ as st
+
+
+class ProteinProfile(object):
+    """
+    docstring for ProteinProfile
+    """
+    def __init__(self, acc, inten):
+        super(ProteinProfile, self).__init__()
+        self.acc = acc
+        self.inten = np.array([float(x) for x in inten])
+        self.peaks = []
+
+    def get_inte(self):
+        return self.inten
+
+    def get_acc(self):
+        return self.acc
+
+    def get_peaks(self):
+        return self.peaks
+
+    def calc_peaks(self):
+        pks = list(preproc.peak_picking(self.inten, 0.2, width=4)[0])
+        # avoid breakage due to float
+        self.peaks = [int(x) for x in pks]
+
+
+class ComplexProfile(object):
+    """
+    docstring for ComplexProfile
+    formed by a list of ProteinProfile
+    """
+    def __init__(self, name):
+        super(ComplexProfile, self).__init__()
+        self.name = name
+        self.goscore = 0
+        # members needs to be reformat to have a 2d matrix
+        self.members = []
+        self.pks = {}
+        self.width = {}
+        self.shifts = []
+        self.cor = []
+        self.diff = []
+        self.pks_ali = []
+
+    def test_complex(self):
+        if len(self.members) < 2:
+            return False
+        else:
+            return True
+
+    def add_member(self, prot):
+        self.members.append(prot)
+
+    def get_members(self):
+        return [x.get_acc() for x in self.members]
+
+    def get_name(self):
+        return self.name
+
+    def create_matrix(self):
+        """
+        create numpy 2d array for vectorization
+        """
+        arr = [x.get_inte() for x in self.members]
+        return np.array(arr)
+
+    def get_peaks(self):
+        """
+        yields one formatted row with pks sel and id
+        """
+        for k in self.pks.keys():
+            yield '{}\t{}\t{}'.format(k, self.get_name(), self.pks[k])
+
+    def calc_go_score(self, goobj, gaf):
+        self.score = go.combine_all2(goobj, gaf, np.array(self.get_members()))
+
+    def format_ids(self):
+        """
+        create a complex identifier by contatenating all the acc
+        """
+        cmplx_members = self.get_members()
+        return '#'.join(cmplx_members)
+
+    def calc_corr(self, pairs, W=10):
+        """
+        vectorized correlation between pairs vectors with sliding window
+        """
+        tmp = []
+        a, b = pairs[0].get_inte(), pairs[1].get_inte()
+        # a,b are input arrays; W is window length
+
+        am = uniform_filter(a.astype(float),W)
+        bm = uniform_filter(b.astype(float),W)
+
+        amc = am[W//2:-W//2+1]
+        bmc = bm[W//2:-W//2+1]
+
+        da = a[:,None]-amc
+        db = b[:,None]-bmc
+
+        # Get sliding mask of valid windows
+        m,n = da.shape
+        mask1 = np.arange(m)[:,None] >= np.arange(n)
+        mask2 = np.arange(m)[:,None] < np.arange(n)+W
+        mask = mask1 & mask2
+        dam = (da*mask)
+        dbm = (db*mask)
+
+        ssAs = np.einsum('ij,ij->j',dam,dam)
+        ssBs = np.einsum('ij,ij->j',dbm,dbm)
+        D = np.einsum('ij,ij->j',dam,dbm)
+        # add np.nan to reach 72
+        self.cor.append(np.hstack((D/np.sqrt(ssAs*ssBs), np.zeros(9) + np.nan)))
+
+
+    def align_peaks(self):
+        """
+        align all protein peaks
+        """
+        # now we need to create the align file for each protein in this cmplx
+        pk = [prot.get_peaks() for prot in self.members]
+        idx_missing = [i for i, j in enumerate(pk) if not j]
+        nan_members = [self.get_members()[i] for i in idx_missing]
+        pres = [x for x in pk if x]
+        mb_pres = [x for x in self.get_members() if x not in nan_members]
+        if nan_members == self.get_members():
+            self.pks_ali = dict(zip(nan_members, [np.nan]*len(nan_members)))
+            return None
+        else:
+            ali_pk = alligner(pres)
+            md = round(st.medi(ali_pk))
+            # missing values gets the median of aligned peaks
+            self.pks_ali = dict(zip(nan_members, [md]*len(nan_members)))
+            self.pks_ali.update(dict(zip(mb_pres, ali_pk)))
+            for k in self.members:
+                if k.get_peaks():
+                    _ = "#".join(map(str, k.get_peaks()))
+                else:
+                    _ = str(self.pks_ali[k.get_acc()])
+                pks = _ + "\t" + str(self.pks_ali[k.get_acc()])
+                self.pks[k.get_acc()] = pks
+            return True
+
+    def pairwise(self):
+        """
+        performs pairwise comparison
+        """
+        for pairs in st.fast_comb(np.array(self.members), 2):
+            self.calc_corr(pairs)
+            self.calc_diff(*pairs)
+            self.calc_shift([x.get_acc() for x in pairs])
+        # now need to average
+        self.cor = np.mean(self.cor, axis=0)
+        self.diff = np.mean(self.diff, axis=0)
+        self.shifts = np.mean(self.shifts)
+
+    def calc_shift(self, ids):
+        self.shifts.append(abs(self.pks_ali[ids[0]] - self.pks_ali[ids[1]]))
+
+    def calc_diff(self, p1, p2):
+        self.diff.append(abs(p1.get_inte() - p2.get_inte()))
+
+    def calc_width(self):
+        q = 5
+        width = []
+        for prot in self.members:
+            peak = int(self.pks_ali[prot.get_acc()])
+            prot_peak = prot.get_inte()[(peak - q):(peak + q)]
+            prot_fwhm = preproc.fwhm(list(prot_peak))
+            width.append(prot_fwhm)
+        self.width = np.mean(width)
+
+    def create_row(self):
+        """
+        get all outputs and create a row
+        """
+        dif_conc = ','.join([str(x) for x in self.diff])
+        cor_conc = ','.join([str(x) for x in self.cor])
+        row_id = self.get_name()
+        members = self.format_ids()
+        row = [row_id, members, cor_conc, str(self.shifts),
+               dif_conc, str(self.width), self.score
+              ]
+        return "\t".join([str(x) for x in row])
 
 
 def add_top(result, item):
@@ -31,58 +215,6 @@ def minimize(solution):
         for nr_2_indx in range(index + 1, length):
             result += abs(number1 - solution[nr_2_indx])
     return result
-
-
-def naive_allign(aoa):
-    ls = [(idx, v) for idx, sublist in enumerate(aoa) for v in sublist]
-    ls = sorted(ls, key=lambda pair: pair[1])
-    ids, ls = zip(*ls)
-    # if nr of elements in aoa is the same as list length then all list is sol
-    if len(set(ids)) == len(ls):
-        return ls
-    # find median and indexes of all appearence of median
-    md = np.median(np.array(ls), axis=0)
-    idxs = [idx for idx, v in enumerate(ls) if v == int(md)]
-    # now we see the closes element to the median on both sides
-    # nr of elements missing to solution
-    left = len(aoa) - len(idxs)
-    # the possible solutions are idxs +- left on both sides
-    inf = list(range(idxs[0] - left, idxs[0]))
-    sup = list(range(idxs[-1] + 1, idxs[-1] + left + 1))
-    # trim list to have only real values in list
-    inf = [x for x in inf if x > - 1]
-    sup = [x for x in sup if x < len(ls)]
-    # start from last one of inf and first one of sup
-    inf_indx = -1
-    sup_indx = 0
-    # exist inf or sup
-    if sup and inf:
-        while left:
-            if abs(ls[inf[inf_indx]] - md) < abs(ls[sup[sup_indx]] - md):
-                # we add the left one
-                idxs.append(inf[inf_indx])
-                inf_indx -= 1
-            else:
-                # we add the right one
-                idxs.append(sup[sup_indx])
-                sup_indx += 1
-            left -= 1
-    elif sup:
-        while left:
-            left -= 1
-            idxs.append(sup[sup_indx])
-            sup_indx += 1
-    elif inf:
-        while left:
-            left -= 1
-            idxs.append(inf[inf_indx])
-            inf_indx += 1
-    pks = []
-    for i in idxs:
-        # we know in which list to search because ids contains list nr
-        indx = aoa[ids[i]].index(ls[i])
-        pks.append(aoa[ids[i]][indx])
-    return pks
 
 
 def min_sd(aoa):
@@ -160,21 +292,50 @@ def alligner(aoa):
             return pks
 
 
+def format_hash(temp):
+    """
+    get a row hash and create a ComplexProfile object
+    """
+    inten = temp['FT'].split('#')
+    members = temp['MB'].split('#')
+    tmp = ComplexProfile(temp['ID'])
+    for idx, acc in enumerate(members):
+        if acc in tmp.get_members():
+            continue
+        # peak picking already here
+        protein = ProteinProfile(acc, inten[idx].split(','))
+        protein.calc_peaks()
+        tmp.add_member(protein)
+    return tmp
+
+
+# @io.timeit
+def gen_feat(cmplx, goobj, gaf):
+    """
+    receive a single row and generate feature calc
+    """
+    if cmplx.test_complex() and cmplx.align_peaks():
+        cmplx.calc_go_score(goobj, gaf)
+        cmplx.calc_width()
+        cmplx.pairwise()
+        return cmplx.create_row(), cmplx.get_peaks()
+
+
 # wrapper
-def mp_cmplx(filename, goobj, gaf, window=10, q=5):
+def mp_cmplx(filename, goobj, gaf, w=10, q=5):
     """
     map complex into 3 vector => cor vectors
     shift peak
     width peak
-    window = point for correlation
-    cor(A[idx:(idx + window)], B[idx:(idx+window)])
+    w = point for correlation
+    cor(A[idx:(idx + w)], B[idx:(idx+w)])
     width = fwhm(A[idx-q:idx+q])
-    so q should be 1/2 of window ?
+    so q should be 1/2 of w ?
     """
     things, header = [], []
     temp = {}
-    to_wrout = []
-    pks_out = []
+    feat_file = []
+    peaks_file = []
     print('calculating features for ' + filename)
     for line in open(filename, 'r'):
         line = line.rstrip('\n')
@@ -185,93 +346,14 @@ def mp_cmplx(filename, goobj, gaf, window=10, q=5):
             temp = {}
             temp = dict(zip(header, things))
         if temp:
-            out = {}
-            pks_ = {}
-            cmplx = temp['FT'].split('#')
-            members = temp['MB'].split('#')
-            # now add average go for each members
-            score = go.combine_all2(goobj, gaf, members)
-            cmplx_2 = []
-            try:
-                for mb in cmplx:
-                    cmplx_2.append([float(x) for x in mb.split(',')])
-            except ValueError as e:
-                continue
-            shft, cor, width, dif = [], [], {}, []
-            # calculate all peaks
-            pk = []
-            cmplx_member = re.split(r'#', temp['MB'])
-            tmp = dict(zip(cmplx_member, cmplx_2))
-            cmplx_member = sorted(cmplx_member)
-            for idx, prot in enumerate(cmplx_2):
-                pks = list(preproc.peak_picking(prot)[0])
-                # we append index
-                pk.append([x for x in pks])
-                pks_[members[idx]] = '#'.join([str(x) for x in pks])
-                # reformat to allign peaks remove nan and sub with first non na
-            # print(temp['ID'])
-            # pk = [x if x else [0] for x in pk]
-            if pk:
-                indx = alligner(pk)
-            else:
-                continue
-            if not indx:
-                continue
-            for idx, mb in enumerate(cmplx):
-                pks_[members[idx]] = "\t".join([pks_[members[idx]],
-                                                str(indx[idx])])
-            # *pairs = ((idx1,[arr1]),(idx2,[arr2]))
-            # substitute 0 with with index peaks
-            indx = [int(st.mean(indx)) if x is 0 else int(x) for x in indx]
-            for pairs in st.fast_comb(list(enumerate(cmplx_2))):
-                # get one tuple at the time
-                idx_0 = indx[pairs[0][0]]
-                idx_1 = indx[pairs[1][0]]
-                shft.append(abs(idx_0 - idx_1))
-                pairs0 = preproc.fwhm(pairs[0][1][(idx_0 - q):idx_0 + q])
-                width[pairs[0][0]] = pairs0
-                pairs1 = preproc.fwhm(pairs[1][1][(idx_1 - q):idx_1 + q])
-                width[pairs[1][0]] = pairs1
-                # cor and diff array wide
-                tmp = []
-                tmp_dif = []
-                for i, (x, y) in enumerate(zip(*[x[1] for x in pairs])):
-                    # this is the difference
-                    tmp_dif.append(abs(x - y))
-                    try:
-                        tmp.append(stats.pearsonr(
-                                                  pairs[0][1][i:(i + window)],
-                                                  pairs[1][1][i:(i + window)]
-                                                  )[0])
-                    # end of array x + 5 window = 72
-                    except IndexError as e:
-                        break
-                cor.append(tmp)
-                dif.append(tmp_dif)
-            df = pd.DataFrame(cor)
-            # df are Fraction = cols prots = rows so mean is colwise
-            # while maintaining the number of rows to 72
-            # TODO use # for consistency
-            cmplx_mb = '#'.join(cmplx_member)
-            cr = df.apply(lambda col: np.nanmean(col), axis=0)
-            tm_df = pd.DataFrame(dif)
-            tm_df = tm_df.apply(lambda col: np.nanmean(col), axis=0)
-            out['d'] = ','.join(str(x) for x in tm_df.tolist())
-            out['c'] = ','.join(str(x) for x in cr.tolist())
-            out['s'] = str(np.mean(shft))
-            out['w'] = str(np.nanmean(np.array(list(width.values()))))
-            out['cb'] = cmplx_mb
-            tm = {}
-            tm[temp['ID']] = cr.tolist()
-            row = [temp['ID'], out['cb'], out['c'], out['s'],
-                   out['d'], out['w'], str(score)
-                   ]
-            to_wrout.append("\t".join(row))
-            for k in pks_:
-                pks_out.append("\t".join([k, temp['ID'], pks_[k]]))
-    return set(to_wrout), pks_out
+            cmplx = format_hash(temp)
+            feat_row, peaks = gen_feat(cmplx, goobj, gaf)
+            feat_file.append(feat_row)
+            [peaks_file.append(x) for x in list(peaks)]
+    return feat_file, peaks_file
 
 
+@io.timeit
 def runner(base, go_obo, tsp_go):
     """
     generate all features from the mapped complexes file
