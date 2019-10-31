@@ -37,6 +37,7 @@ class ProteinProfile(object):
         self.peaks = [int(x) for x in pks]
 
 
+
 class ComplexProfile(object):
     """
     docstring for ComplexProfile
