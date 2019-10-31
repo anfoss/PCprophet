@@ -353,7 +353,6 @@ def mp_cmplx(filename, goobj, gaf, w=10, q=5):
     return feat_file, peaks_file
 
 
-@io.timeit
 def runner(base, go_obo, tsp_go):
     """
     generate all features from the mapped complexes file

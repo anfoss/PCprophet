@@ -49,11 +49,9 @@ class InputTester(object):
 
     def test_file(self):
         self.read_infile()
-        # print(self.infile)
         if self.filetype == 'ids':
             col = ['Sample', 'cond', 'group', 'short_id' ,'repl', 'fr']
             unique = ['repl', 'short_id']
-            # short_id + repl needs to be unique
             self.test_all(col, unique)
             self.test_empty(col)
         elif self.filetype == 'db':
@@ -67,6 +65,5 @@ class InputTester(object):
         elif self.filetype == 'in':
             col = ['GN', 'ID']
             unique = ['GN']
-            # short_id + repl needs to be unique
             self.test_all(col, unique)
             self.test_na()
