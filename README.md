@@ -80,4 +80,4 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 
 ## Acknowledgments
 
-* [mojaje](https://github.com/mojaie/pygosemsim) for the implementation of GO tree parsing 
+* [mojaje](https://github.com/mojaie/pygosemsim) for the implementation of GO tree parsing
