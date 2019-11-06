@@ -21,12 +21,13 @@ These instructions will get you a copy of the project up and running on your loc
 
 For the command line version Java is not necessary and can be skipped.
 ```
-github clone PCprophet
+github clone https://github.com/fossatiA/PCprophet PCprophet
 ```
+This will get you a working copy copy of PCprophet
 
 #### GUI version
 
-Installing the GUI version of PCprophet can be done by either cloning the repo or by downloading the executable file from ### INSERT here link.
+Installing the GUI version of PCprophet can be done by either cloning the repo or by downloading the executable file from ### INSERT here link. The executable file packs together all required dependencies and interpreter (Python). Java needs still to be installed
 
 ## Running the tests
 
@@ -46,7 +47,7 @@ PCprophet.Exceptions.ModelError will be raised in case of not compatibility and 
 python3 PCprophet/test/test_methods.py
 ```
 
-PCprophet.Exceptions.MethodError will be raised in case of not compatibility and it will be necessary to downgrade the current Sklearn to a compatible version
+PCprophet.Exceptions.MethodError will be raised in case of not compatibility and it will be necessary to downgrade the current Sklearn/Scipy/Pandas to a compatible version
 
 ## Usage
 
@@ -56,21 +57,18 @@ For usage of PCprophet refers to the vignette in ... link
 ## Built With
 
 * [Pynstaller](https://www.pyinstaller.org) - Package builder
-* [Maven](https://maven.apache.org/) - GUI
+* [...](....) - GUI Builder
 
 
 ## Contributing
 
-Please read [CONTRIBUTING.md](https://gist.github.com/PurpleBooth/b24679402957c63ec426) for details on our code of conduct, and the process for submitting pull requests to us.
+Please read [CONTRIBUTE.md](https://github.com/fossatiA/PCprophet/blob/master/CONTRIBUTE.md) for details on our code of conduct, and the process for submitting pull requests to us.
 
-## Versioning
-
-We use [SemVer](http://semver.org/) for versioning. For the versions available, see the [tags on this repository](https://github.com/your/project/tags).
 
 ## Authors
 
 * **Andrea Fossati** - *Initial work* - [fossatiA](https://github.com/fossatiA)
-* **Chen Li** - *Initial work* - [fossatiA](https://github.com/fossatiA)
+* **Chen Li** - *Initial work* - chen.li@monash.edu
 
 See also the list of [contributors](https://github.com/your/project/contributors) who participated in this project.
 
