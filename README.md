@@ -9,7 +9,7 @@ These instructions will get you a copy of the project up and running on your loc
 ### Prerequisites
 
 * [Python 3.x](https://www.python.org)
-* [Sklearn 1.x](https://pypi.org/project/sklearn/)
+* [Sklearn 0.20.3](https://pypi.org/project/sklearn/)
 * [NetworkX >2.1](https://networkx.github.io)
 * [Pandas >0.23](https://pandas.pydata.org)
 * [Scipy >1.1.0](https://www.scipy.org)
