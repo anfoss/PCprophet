@@ -9,25 +9,25 @@
 
 ### PCprophet modules
 
-PCprophet is organized in a modular way. We have two kind of modules. First are core modules, which are characterized by the runner() method and that are called directly by the top level module main.py.
-The others are module which have functions used by more than one module, or for which having a core module was unnecessary.
+PCprophet is organized in a modular way. We have two kind of modules. First are core modules, which are characterized by the runner() method and that are called directly by the main.py.
+The rest are modules which have functions used by more than one module, or for which having a core module was unnecessary.
 
 ##### Core modules
 
 * main.py - Top level module controlling the program flow and the setup of all parameters. Creates the .conf file
 * map_to_database.py - Reads in the database (either PPI or complexes) and map the protein matrix into complexes. Performs rescaling and normalization and create the transf_matrix.txt file
 * hypothesis.py - Performs hypothesis generation as described in the vignette and creates the transf_matrix_splitted.txt file
-* merge.py - Merge hypothesis and database together before feature generation
+* merge.py - Merge hypothesis and database together before feature generation.
 * generate_feature.py - Generate features and creates the peak_list.txt file
-* predict.py - Load pickled sklearn module and returns class probabiliy for every sample
-* collapse.py - Experiment-wide and protein-centric merging of all complexes
-* differential.py - Performs differential anslysi
+* predict.py - Load pickled sklearn module and returns class probability for every sample
+* collapse.py - Experiment-wide and protein-centric merging of all complexes after FDR control
+* differential.py - Performs differential analysis
 * plots.py - Ensamble of plotting functions
 
 #### Other modules
 
 * aligner.py - Experiment-wide alignement using internal housekeeping complexes
-* exceptions.py - Specific PCprophet extension
+* exceptions.py - Specific PCprophet exceptions
 * go_fdr.py - GO-based FDR calculation as described in the vignette
 * io_.py - I/O methods
 * mcl.py - Markov based clustering for generating possible complexes from a ppi network
