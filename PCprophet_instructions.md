@@ -46,18 +46,18 @@ In the PCprophet package, all parameters can be configured either via the ‘Pro
 All of the above parameters have the following default settings
 
 
-| Parameter      | Default           |Possible|
-| :------------- | :----------       ||
-| -Output        | './Output'        |any|
-| -sid           | './sample_ids.txt'|any|
-| -cal           | None              |any|
-| -mw_uniprot    | None              |any|
-| -all_fract     | 'all'             |[1>x>number of fractions, 'all']|
-| -is_ppi        | 'False'           |[True, False]|
-| -merge         | 'all'             |['all', 'reference']|
+| Parameter      | Default           |Possible                              |
+| :--------------| :-----------------|:-------------------------------------|
+| -Output        | './Output'        |any                                   |
+| -sid           | './sample_ids.txt'|any                                   |
+| -cal           | None              |any                                   |
+| -mw_uniprot    | None              |any                                   |
+| -all_fract     | 'all'             |[1>x>number of fractions, 'all']      |
+| -is_ppi        | 'False'           |[True, False]                         |
+| -merge         | 'all'             |['all', 'reference']                  |
 | -co            | 'GO'              |['GO', 'SUPER', 'CAL', 'eCAL', 'NONE']|
-| -fdr           | 0.75              |0>x>1|
-| -score_missing | 0.5               |0>x>1|
+| -fdr           | 0.75              |0>x>1                                 |
+| -score_missing | 0.5               |0>x>1                                 |
 
 
 ---
@@ -65,7 +65,7 @@ All of the above parameters have the following default settings
 The file ‘sample_ids.txt’ stores the experimental information and needs to contain the following headers
 
 | Sample     | cond      |group|short_id|repl|fr|
-| :------------- | :------------- |||||
+| :----------| :---------| :---|:-------|:---|:-|
 
 - __Sample__ full path of the file intended to be processed
 - __cond__ condition name
@@ -80,7 +80,7 @@ The file ‘sample_ids.txt’ stores the experimental information and needs to c
 Here is an example of a complete table with two conditions and three replicates
 
 | Sample     | cond      |group|short_id|repl|fr|
-| :------------- | :------------- |||||
+| :----------| :----- |:-----|:-----|:-----|:-----|
 | ./Input/c1r1.txt     | Ctrl      |1|ipsc_2i_1|1|65|
 | ./Input/c1r2.txt     | Ctrl      |1|ipsc_2i_2|2|64|
 | ./Input/c1r3.txt     | Ctrl      |1|ipsc_2i_3|3|65|
