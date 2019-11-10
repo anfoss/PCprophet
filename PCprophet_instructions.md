@@ -9,9 +9,9 @@ In the PCprophet package, all parameters can be configured either via the ‘Pro
 ##### Global parameters:
 
 ```
--Output	 The output folder
--sid	    Sample identifier file
--cal	    Calibration file (no headers)
+-Output The output folder
+-sid  Sample identifier file
+-cal  Calibration file (no headers)
 -mw_uniprot Gene names to molecular mass
 
 ```
@@ -19,9 +19,9 @@ In the PCprophet package, all parameters can be configured either via the ‘Pro
 ##### Pre-processing parameters:
 
 ```
--all_fract	The number of fractions to use [1, X].
--is_ppi	   Is the provided database a PPI network or a complex database
--merge	    Choose ‘all’ for using data-driven+database based hypothesis generation and ‘reference’ use only database derived complexes
+-all_fract  The number of fractions to use [1, X].
+-is_ppi Is the provided database a PPI network or a complex database
+-merge  Choose ‘all’ for using data-driven+database based hypothesis generation and ‘reference’ use only database derived complexes
 
 ```
 
@@ -29,8 +29,8 @@ In the PCprophet package, all parameters can be configured either via the ‘Pro
 ##### Post-processing parameters:
 
 ```
--co	        Mode for collapsing hypothesis to common complexes
--fdr	       False discovery rate for hypothesis 0 > FDR > 1
+-co Mode for collapsing hypothesis to common complexes
+-fdr  False discovery rate for hypothesis 0 > FDR > 1
 
 ```
 
@@ -39,7 +39,7 @@ In the PCprophet package, all parameters can be configured either via the ‘Pro
 ##### Differential analysis parameters:
 
 ```
--score_missing	Score for missing proteins
+-score_missing  Score for missing proteins
 
 ```
 
