@@ -140,9 +140,26 @@ PCprophet generates the following QC plots
 
 One folder for each __short_id__ will be generated. Within that folder all the positive and negative complexes from the database  are plotted together with the novel positive complexes identified by PCprophet
 
-### FAQ
+### FAQ and solution to common problems
 
-TODO
+* __-CAL flag for collapsing returns an error__! Check that the format of the calibration file. __A correctly formatted calibration file will have the fraction first as integer and the molecular weight in KDa as integer__
+
+| | | |
+|-|-|-|
+|15| 1398 |
+|24| 699 |
+|31| 300 |
+|39| 150 |
+|47| 44 |
+|53| 17 |
+
+> **Note:**  Be sure to pass __ALSO__ the -mw_uniprot flag with a link to the appropriate file
+
+* __-eCAL returns NotImplementedExceptions__ We are currently working on a MW weight free collapsing procedure where the calibration file is used without the -mw_uniprot flag. We decided to give as options to motivate us developing it fast!
+
+* -__FalseDiscoveryRate.pdf looks weird__ This FDR plot is across GO score. Thereby we expect lower FDR with increase of GO score. However, as caveat depending on the database used and the complex identified within the database the FDR will vary greatly. For example a CORUM FDR of 0.75 corresponds approximately to a STRING FDR or 0.2.
+
+* -__ConditionAlignement.pdf also looks weird__ this is quite common as we use a global alignement strategy with the rational that fractionations artifacts will influence the entire gradient by a similar factor across all fractions.  
 
 
 ### Contact
