@@ -61,6 +61,7 @@ Explain the problem and include details to help maintainers reproduce the proble
 * **Report the error/exception raised and which parameters were used**
 * **Explain which behavior you expected to see instead and why.**
 * **Copy the .conf file and .spec file from PCprophet**
+* **Copy the terminal output** Every module in case of correct behaviour will print a message at the end of the runner() method. This ease up to point at faulty modules and can tell us if the previous modules failed or behaved as expected. Please copy that and attach it to the bug report
 
 Provide more context by answering these questions:
 
