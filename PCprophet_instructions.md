@@ -45,6 +45,7 @@ In the PCprophet package, all parameters can be configured either via the ‘Pro
 
 All of the above parameters have the following default settings
 
+
 | Parameter     | Default    |Possible|
 | :------------- | :------------- ||
 | -Output      | './Output'|any|
@@ -57,6 +58,7 @@ All of the above parameters have the following default settings
 | -co      | 'GO'|['GO', 'SUPER', 'CAL', 'eCAL', 'NONE']|
 | -fdr      | 0.75|0>x>1|
 | -score_missing      | 0.5|0>x>1|
+
 
 ---
 ### Writing the experimental information file
@@ -85,6 +87,8 @@ Here is an example of a complete table with two conditions and three replicates
 | ./Input/c2r1.txt     | Treat1      |2|ipsc_ra_1|1|65|
 | ./Input/c2r2.txt     | Treat1      |2|ipsc_ra_2|2|65|
 | ./Input/c2r3.txt     | Treat1      |2|ipsc_ra_3|3|65|
+
+
 
 
 > **Note:**  __Differential analysis will be performed *automatically* if the sample_ids.txt file contains more than one group__
