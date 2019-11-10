@@ -6,75 +6,139 @@ In the PCprophet package, all parameters can be configured either via the ‘Pro
 ### Parameter setup
 
 
-#### Global parameters:
-Parameter	Note	Default value
--Input	The input foldera	./Input/
--Output	The output folder	./Output/
--sid	Sample identifier fileb	./sample_ids.txt
--cal	Calibration file (no headers)	./cal.txt
+##### Global parameters:
 
-aFor the format of the input folder, please refer to the ./IN/ folder for example.
-bThe format of a sample identifier file has been provided in the package. It mainly stores the sample/condition information of the experimental design. Please follow the format in the file for your own experiments.
+```
+-Output	 The output folder
+-sid	    Sample identifier file
+-cal	    Calibration file (no headers)
+-mw_uniprot Gene names to molecular mass
 
-#### Pre-processing parameters:
-Parameter	Note	Default value
--max_hypothesis	The max number of proteins per hypothesis	50
--all_fract	The number of fractions to use [1, X]. Use 'all' for using all fractions	all
--is_ppi	Is the provided database a PPI (protein-protein interaction) or a complex database (False/True)?	False
--merge	PCprophet generates either data-driven hypothesis or database-based hypothesis. Choose ‘all’ for using data-driven+database based hypothesis generation and ‘reference’ to get potential complexes from the database. If ‘reference’ is chosen, the parameter ‘-max_hypothesis’ will not be functional.	all
+```
 
-#### Post-processing parameters:
-Parameter	Note	Default value
--collapse_mode	Mode for collapsing hypothesis to common complexes ['GO', 'CAL', 'SUPER', 'NONE'].
-‘GO’: max GO scores per branch;
-‘CAL’: closer to extrapolated MW;
-‘SUPER’ bigger subset;
-‘NONE’: no collapsing.	GO
--fdr	The false discovery rate for hypothesis 0>FDR>1. 0.5 is recommended for conservative searches. This is strictly dependent on the database used (a CORUM FDR of 75% correspond to a STRING/ppi FDR of < 20%)	0.75
+##### Pre-processing parameters:
 
-#### Differential analysis parameters:
-Parameter	Note	Default value
--score_missing	how much should be missing protein across conditions be scored?	0.5
+```
+-all_fract	The number of fractions to use [1, X].
+-is_ppi	   Is the provided database a PPI network or a complex database
+-merge	    Choose ‘all’ for using data-driven+database based hypothesis generation and ‘reference’ use only database derived complexes
+
+```
+
+
+##### Post-processing parameters:
+
+```
+-co	        Mode for collapsing hypothesis to common complexes
+-fdr	       False discovery rate for hypothesis 0 > FDR > 1
+
+```
+
+
+
+##### Differential analysis parameters:
+
+```
+-score_missing	Score for missing proteins
+
+```
+
+All of the above parameters have the following default settings
+
+| Parameter     | Default    |Possible|
+| :------------- | :------------- ||
+| -Output      | './Output'|any|
+| -sid     | './sample_ids.txt'|any|
+| -cal      | None|any|
+| -mw_uniprot      | None|any|
+| -all_fract      | 'all'|[1>x>number of fractions, 'all']|
+| -is_ppi      | 'False'|[True, False]|
+| -merge      | 'all'|['all', 'reference']|
+| -co      | 'GO'|['GO', 'SUPER', 'CAL', 'eCAL', 'NONE']|
+| -fdr      | 0.75|0>x>1|
+| -score_missing      | 0.5|0>x>1|
 
 ---
-#### Writing the experimental information
-The file ‘sample_ids.txt’ stores the experimental information. An example for the provided testing datasets has been provided:
+### Writing the experimental information file
+The file ‘sample_ids.txt’ stores the experimental information and needs to contain the following headers
 
-There are six columns in this file, namely Sample, cond (i.e. condition), group, short_id, repl (i.e. number of replicates), and fr (i.e. number of fractions). In the ‘Sample’ column, please make sure that the content is identical with the testing file name (without the file extension). In the ‘cond’ column, if you have multiple conditions, please label them exactly as ‘Ctrl’, ‘Treat1’, and ‘Treat2’ etc. Failure to do so will cause problems when running PCprophet.
+| Sample     | cond      |group|short_id|repl|fr|
+| :------------- | :------------- |||||
 
-(3) Running PCprophet
-PCprophet can be run using the following command (the other parameters have been set in the ‘ProphetConfig.conf’ file and the output folder is set by default):
->python3 main.py -Input ./IN/ -db ./20190513_CORUMcoreComplexes.txt -sid sample_ids.txt
+- __Sample__ full path of the file intended to be processed
+- __cond__ condition name
+- __group__ group number (integer, needs to be 1 for control)
+- __short_id__ alternative id
+- __repl__ replicate number within the contiions
+- __fr__ number of fractions per file
 
-While running in the cluster, please load the needed modules first (using Euler as an example and the output folder is set by default):
+
+> **Note:**  In the ‘Sample’ column, please make sure that the content is identical with the testing file name (with the file extension). In the ‘cond’ column, if you have multiple conditions, please label them exactly as ‘Ctrl’, ‘Treat1’, and ‘Treat2’ etc. Failure to do so will cause problems when running PCprophet.
+
+Here is an example of a complete table with two conditions and three replicates
+
+| Sample     | cond      |group|short_id|repl|fr|
+| :------------- | :------------- |||||
+| ./Input/c1r1.txt     | Ctrl      |1|ipsc_2i_1|1|65|
+| ./Input/c1r2.txt     | Ctrl      |1|ipsc_2i_2|2|64|
+| ./Input/c1r3.txt     | Ctrl      |1|ipsc_2i_3|3|65|
+| ./Input/c2r1.txt     | Treat1      |2|ipsc_ra_1|1|65|
+| ./Input/c2r2.txt     | Treat1      |2|ipsc_ra_2|2|65|
+| ./Input/c2r3.txt     | Treat1      |2|ipsc_ra_3|3|65|
 
 
-#Now load modules
->module load new gcc/4.8.2 python/3.4.3
->module load java
+> **Note:**  __Differential analysis will be performed *automatically* if the sample_ids.txt file contains more than one group__
 
-#Now run PCprophet
->bsub -W 48:00 -R "rusage[mem=12288]" python3 main.py -Input ./IN/
--db ./ 20190513_CORUMcoreComplexes.txt -sid sample_ids.txt
 
-We suggest when submitting on the cluster to take in account 24 hours for < 6 samples >24 otherwise. A single run will take approximately 4 hrs locally and 2 hrs on the cluster with default parameter.
+
+---
+### Running PCprophet
+PCprophet can be using all default settings with
+
+
+```
+python3 main.py
+```
+
+Parameters can be individually set, for example using an interaction network instead of a complex database
+
+```
+python3 main.py -db myppi.txt -is_ppi True
+```
+
+
 
 ----
 
 ### Interpreting prediction results
-There will be two folders generated by the PCprophet, including the ‘tmp’ folder and the user designated ‘Output’ folder. The ‘tmp’ folder stores all the intermediate files for PCprophet to process and therefore can be used for debugging and validation. The ‘tmp’ folder can be safely deleted after PCprophet finishes all the prediction and analysis. The ‘Output’ folder, on the other hand, harboured all the output files, results and plots generated by PCprophet. A basic structure of the ‘Output’ folder is described in the following figure:
+There will be two folders generated by the PCprophet, including the ‘tmp’ folder and the user designated ‘Output’ folder. The ‘tmp’ folder stores all the intermediate files for PCprophet to process and therefore can be used for debugging and validation. The ‘tmp’ folder can be safely deleted after PCprophet finishes all the prediction and analysis. The ‘Output’ folder, on the other hand, harboured all the output files, results and plots generated by PCprophet.
 
-a.	ComplexReport.txt: this file contains all the predicted results, including positive and negative complexes. For positive predictions, we also mapped them to the database provided with the -db parameter to see if they have been documented. If they have been documented, we label them as ‘Reported’; otherwise, they are labelled as ‘Novel’.
-b.	ConditionAlignement.pdf: Profile plot of common complexes across all the provided experiments used to realign the data.
-c.	FalseDiscoveryRate.pdf: an FDR plot where the positive hypotheses are filtered to control for false discovery rate using the positive complexes database provided. If not provided a fixed threshold of 0.5 is used.
-d.	PPIReport.txt: Protein-protein interaction network generated from positive complexes. Suitable as input for network visualization tools such as Cytoscape.
-e.	RecallDatabase.pdf: % of positive predicted complexes on the total size of the database provided.
-f.	DifferentialComplexReport.txt: Complex-level differential analysis, where complexes are ranked based on the average difference between their protein co-elution profile.
-g.	DifferentialProteinReport.txt: Protein-level differential analysis, where the average profile difference between each condition is reported.
-h.	Differential: Delta plot of intensity between every condition and control. A flat line represents no difference between control and condition. A positive peak represents an increase in the control; while a negative peak represents an increase in the condition (right Y axis).
+In the output folder the following text files are present:
+
+- __ComplexReport.txt__: All the predicted results, including positive and negative complexes. For positive predictions, we also mapped them to the database provided with the -db parameter to see if they have been documented. If they have been documented, we label them as ‘Reported’; otherwise, they are labelled as ‘Novel’.
+- __PPIReport.txt__: Protein-protein interaction network generated from positive complexes. Suitable as input for network visualization tools such as Cytoscape.
+
+In case differential analysis was performed two additional text files and one folder are going to be present
+
+- __DifferentialComplexReport.txt__: Complex-level differential analysis, where complexes are ranked based on the average difference between their protein co-elution profile.
+- __DifferentialProteinReport.txt__: Protein-level differential analysis, where the average profile difference between each condition is reported.
 
 
-i.	The folder containing protein complex co-elution profile plots: Based on the number of conditions and the number of replicates, the co-elution profiles of both predicted positive and negative complexes are illustrated here in this folder. For example, in the following figure, (A) Predicted negative complex but documented in the CORUM database; (B) Predicted novel complex; and (C) Predicted positive complex and documented in the CORUM database.
+- __Differential__: Differential delta plot of intensity between every condition and control. A flat line represents no difference between control and condition. A positive peak represents an increase in the control; while a negative peak represents an increase in the condition (right Y axis).
+
+
+PCprophet generates the following QC plots
+
+- __ConditionAlignement.pdf__: Profile plot of common complexes across all the provided experiments used to realign the data.
+- __FalseDiscoveryRate.pdf__: an FDR plot where the positive hypotheses are filtered to control for false discovery rate using the positive complexes database provided. If not provided a fixed threshold of 0.5 is used.
+
+- __RecallDatabase.pdf__: % of positive predicted complexes on the total size of the database provided.
+
+One folder for each __short_id__ will be generated. Within that folder all the positive and negative complexes from the database  are plotted together with the novel positive complexes identified by PCprophet
+
+### FAQ
+
+TODO
 
 
 ### Contact
