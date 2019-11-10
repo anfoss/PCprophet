@@ -46,18 +46,18 @@ In the PCprophet package, all parameters can be configured either via the ‘Pro
 All of the above parameters have the following default settings
 
 
-| Parameter     | Default    |Possible|
-| :------------- | :------------- ||
-| -Output      | './Output'|any|
-| -sid     | './sample_ids.txt'|any|
-| -cal      | None|any|
-| -mw_uniprot      | None|any|
-| -all_fract      | 'all'|[1>x>number of fractions, 'all']|
-| -is_ppi      | 'False'|[True, False]|
-| -merge      | 'all'|['all', 'reference']|
-| -co      | 'GO'|['GO', 'SUPER', 'CAL', 'eCAL', 'NONE']|
-| -fdr      | 0.75|0>x>1|
-| -score_missing      | 0.5|0>x>1|
+| Parameter      | Default           |Possible|
+| :------------- | :----------       ||
+| -Output        | './Output'        |any|
+| -sid           | './sample_ids.txt'|any|
+| -cal           | None              |any|
+| -mw_uniprot    | None              |any|
+| -all_fract     | 'all'             |[1>x>number of fractions, 'all']|
+| -is_ppi        | 'False'           |[True, False]|
+| -merge         | 'all'             |['all', 'reference']|
+| -co            | 'GO'              |['GO', 'SUPER', 'CAL', 'eCAL', 'NONE']|
+| -fdr           | 0.75              |0>x>1|
+| -score_missing | 0.5               |0>x>1|
 
 
 ---
