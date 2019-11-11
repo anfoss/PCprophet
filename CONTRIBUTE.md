@@ -172,4 +172,4 @@ def do_something_important(df):
 
 ### Code formatting Guidelines
 
-* Use [Flake8](https://pypi.org/project/flake8/)
+* Use [Black](https://github.com/psf/black)
