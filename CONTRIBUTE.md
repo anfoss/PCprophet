@@ -119,7 +119,7 @@ class ImportantClass(object):
 ```
 
 
-* Line length is 79 characters, apart when a long chained Pandas statement is used.
+* Line length is 80 characters, apart when a long chained Pandas statement is used.
 
 ```python
 (df.groupby[['x','y']]
