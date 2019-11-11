@@ -12,29 +12,34 @@ def split_delim(dels):
 
 
 def combined_hyp(base):
-    # base = io.resource_path(base)
-    hypo = pd.read_csv(os.path.join(base, 'hypo.txt'), sep="\t")
-    hypo['ANN'] = 0
-    hypo['CMPLT'] = 0
-    hypo = hypo[['ID', 'CMPLT', 'MB', 'FT', 'ANN']]
-    cor = pd.read_csv(os.path.join(base, 'ann_cmplx.txt'), sep="\t")
-    cor['ANN'] = 1
+    #  base = io.resource_path(base)
+    hypo = pd.read_csv(os.path.join(base, "hypo.txt"), sep="\t")
+    hypo["ANN"] = 0
+    hypo["CMPLT"] = 0
+    hypo = hypo[["ID", "CMPLT", "MB", "FT", "ANN"]]
+    cor = pd.read_csv(os.path.join(base, "ann_cmplx.txt"), sep="\t")
+    cor["ANN"] = 1
     assert list(hypo) == list(cor)
     combined = cor.append(hypo, ignore_index=True)
     # now we fix the duplicate entry
     # this is the issue, makes no sense now to do this
-    combined['MB'].apply(lambda x: split_delim(x))
-    combined = combined.groupby('MB').agg({'CMPLT': 'first', 'ID': '#'.join, 'FT': 'first', 'ANN': 'first'}).reset_index()
-    combined = combined[['ID', 'MB', 'FT', 'ANN', 'CMPLT']]
+    combined["MB"].apply(lambda x: split_delim(x))
+    combined = (
+        combined.groupby("MB")
+        .agg({"CMPLT": "first", "ID": "#".join, "FT": "first", "ANN": "first"})
+        .reset_index()
+    )
+    combined = combined[["ID", "MB", "FT", "ANN", "CMPLT"]]
     return combined
 
 
 def corum(base):
-    # base = io.resource_path(base)
-    cor = pd.read_csv(os.path.join(base, 'ann_cmplx.txt'), sep="\t")
-    cor['ANN'] = 1
-    combined = cor[['ID', 'MB', 'FT', 'ANN', 'CMPLT']]
+    #  base = io.resource_path(base)
+    cor = pd.read_csv(os.path.join(base, "ann_cmplx.txt"), sep="\t")
+    cor["ANN"] = 1
+    combined = cor[["ID", "MB", "FT", "ANN", "CMPLT"]]
     return combined
+
 
 def runner(base, mergemode):
     """
@@ -44,12 +49,12 @@ def runner(base, mergemode):
     """
     # need to reformat both
     combined = pd.DataFrame()
-    if mergemode == 'all':
+    if mergemode == "all":
         combined = combined_hyp(base)
-        print('combining hypothesis and corum for ' + base)
-    elif mergemode == 'reference':
+        print("combining hypothesis and corum for " + base)
+    elif mergemode == "reference":
         combined = corum(base)
-        print('using only corum annotated complexes for ' + base)
-    outpath = os.path.join(base, 'cmplx_combined.txt')
-    combined.to_csv(outpath, sep='\t', index=False)
+        print("using only corum annotated complexes for " + base)
+    outpath = os.path.join(base, "cmplx_combined.txt")
+    combined.to_csv(outpath, sep="\t", index=False)
     return True

@@ -16,6 +16,7 @@ class ProteinProfile(object):
     """
     docstring for ProteinProfile
     """
+
     def __init__(self, acc, inten):
         super(ProteinProfile, self).__init__()
         self.acc = acc
@@ -37,12 +38,12 @@ class ProteinProfile(object):
         self.peaks = [int(x) for x in pks]
 
 
-
 class ComplexProfile(object):
     """
     docstring for ComplexProfile
     formed by a list of ProteinProfile
     """
+
     def __init__(self, name):
         super(ComplexProfile, self).__init__()
         self.name = name
@@ -83,7 +84,7 @@ class ComplexProfile(object):
         yields one formatted row with pks sel and id
         """
         for k in self.pks.keys():
-            yield '{}\t{}\t{}'.format(k, self.get_name(), self.pks[k])
+            yield "{}\t{}\t{}".format(k, self.get_name(), self.pks[k])
 
     def calc_go_score(self, goobj, gaf):
         self.score = go.combine_all2(goobj, gaf, np.array(self.get_members()))
@@ -93,7 +94,7 @@ class ComplexProfile(object):
         create a complex identifier by contatenating all the acc
         """
         cmplx_members = self.get_members()
-        return '#'.join(cmplx_members)
+        return "#".join(cmplx_members)
 
     def calc_corr(self, pairs, W=10):
         """
@@ -103,29 +104,28 @@ class ComplexProfile(object):
         a, b = pairs[0].get_inte(), pairs[1].get_inte()
         # a,b are input arrays; W is window length
 
-        am = uniform_filter(a.astype(float),W)
-        bm = uniform_filter(b.astype(float),W)
+        am = uniform_filter(a.astype(float), W)
+        bm = uniform_filter(b.astype(float), W)
 
-        amc = am[W//2:-W//2+1]
-        bmc = bm[W//2:-W//2+1]
+        amc = am[W // 2 : -W // 2 + 1]
+        bmc = bm[W // 2 : -W // 2 + 1]
 
-        da = a[:,None]-amc
-        db = b[:,None]-bmc
+        da = a[:, None] - amc
+        db = b[:, None] - bmc
 
         # Get sliding mask of valid windows
-        m,n = da.shape
-        mask1 = np.arange(m)[:,None] >= np.arange(n)
-        mask2 = np.arange(m)[:,None] < np.arange(n)+W
+        m, n = da.shape
+        mask1 = np.arange(m)[:, None] >= np.arange(n)
+        mask2 = np.arange(m)[:, None] < np.arange(n) + W
         mask = mask1 & mask2
-        dam = (da*mask)
-        dbm = (db*mask)
+        dam = da * mask
+        dbm = db * mask
 
-        ssAs = np.einsum('ij,ij->j',dam,dam)
-        ssBs = np.einsum('ij,ij->j',dbm,dbm)
-        D = np.einsum('ij,ij->j',dam,dbm)
+        ssAs = np.einsum("ij,ij->j", dam, dam)
+        ssBs = np.einsum("ij,ij->j", dbm, dbm)
+        D = np.einsum("ij,ij->j", dam, dbm)
         # add np.nan to reach 72
-        self.cor.append(np.hstack((D/np.sqrt(ssAs*ssBs), np.zeros(9) + np.nan)))
-
+        self.cor.append(np.hstack((D / np.sqrt(ssAs * ssBs), np.zeros(9) + np.nan)))
 
     def align_peaks(self):
         """
@@ -138,13 +138,13 @@ class ComplexProfile(object):
         pres = [x for x in pk if x]
         mb_pres = [x for x in self.get_members() if x not in nan_members]
         if nan_members == self.get_members():
-            self.pks_ali = dict(zip(nan_members, [np.nan]*len(nan_members)))
+            self.pks_ali = dict(zip(nan_members, [np.nan] * len(nan_members)))
             return None
         else:
             ali_pk = alligner(pres)
             md = round(st.medi(ali_pk))
             # missing values gets the median of aligned peaks
-            self.pks_ali = dict(zip(nan_members, [md]*len(nan_members)))
+            self.pks_ali = dict(zip(nan_members, [md] * len(nan_members)))
             self.pks_ali.update(dict(zip(mb_pres, ali_pk)))
             for k in self.members:
                 if k.get_peaks():
@@ -179,7 +179,7 @@ class ComplexProfile(object):
         width = []
         for prot in self.members:
             peak = int(self.pks_ali[prot.get_acc()])
-            prot_peak = prot.get_inte()[(peak - q):(peak + q)]
+            prot_peak = prot.get_inte()[(peak - q) : (peak + q)]
             prot_fwhm = preproc.fwhm(list(prot_peak))
             width.append(prot_fwhm)
         self.width = np.mean(width)
@@ -188,13 +188,19 @@ class ComplexProfile(object):
         """
         get all outputs and create a row
         """
-        dif_conc = ','.join([str(x) for x in self.diff])
-        cor_conc = ','.join([str(x) for x in self.cor])
+        dif_conc = ",".join([str(x) for x in self.diff])
+        cor_conc = ",".join([str(x) for x in self.cor])
         row_id = self.get_name()
         members = self.format_ids()
-        row = [row_id, members, cor_conc, str(self.shifts),
-               dif_conc, str(self.width), self.score
-              ]
+        row = [
+            row_id,
+            members,
+            cor_conc,
+            str(self.shifts),
+            dif_conc,
+            str(self.width),
+            self.score,
+        ]
         return "\t".join([str(x) for x in row])
 
 
@@ -203,7 +209,7 @@ def add_top(result, item):
     length = len(result)
     index = 0
     # if less than lenght and better diff
-    while (index < length and result[index][1] < item[1]):
+    while index < length and result[index][1] < item[1]:
         index += 1
     result.insert(index, item)
 
@@ -219,44 +225,44 @@ def minimize(solution):
 
 
 def min_sd(aoa):
-        rf_pk = []
-        for v in aoa:
-            rf_pk.append([x for x in v if x is not None])
-        ln = max([len(x) for x in rf_pk])
-        rf_pk2 = [x[:ln] for x in rf_pk]
-        for short in rf_pk2:
-            while len(short) < ln:
-                try:
-                    short.append(short[-1])
-                except IndexError as e:
-                    break
-        pkn = pd.DataFrame(rf_pk2)
-        # now all peaks detected are alligned rowise
-        # calc standard deviation and take index of min sd
-        sd = (pkn.apply(lambda col: np.std(col, ddof=1), axis=0)).tolist()
-        try:
-            sd = sd.index(min(sd))
-        except ValueError as e:
-            return None
-        indx = []
-        # for each protein append index of peak
-        # input is protA [peak, peak ,peak]
-        # indx out is [protA=> peak, protB => peak, protC => peak]
-        # order is same because we append from same array
-        for mx_indx in rf_pk2:
+    rf_pk = []
+    for v in aoa:
+        rf_pk.append([x for x in v if x is not None])
+    ln = max([len(x) for x in rf_pk])
+    rf_pk2 = [x[:ln] for x in rf_pk]
+    for short in rf_pk2:
+        while len(short) < ln:
             try:
-                indx.append(mx_indx[sd])
-            # if no peak in mx_indx append none
+                short.append(short[-1])
             except IndexError as e:
-                indx.append(None)
-        return indx
+                break
+    pkn = pd.DataFrame(rf_pk2)
+    # now all peaks detected are alligned rowise
+    # calc standard deviation and take index of min sd
+    sd = (pkn.apply(lambda col: np.std(col, ddof=1), axis=0)).tolist()
+    try:
+        sd = sd.index(min(sd))
+    except ValueError as e:
+        return None
+    indx = []
+    # for each protein append index of peak
+    # input is protA [peak, peak ,peak]
+    # indx out is [protA=> peak, protB => peak, protC => peak]
+    # order is same because we append from same array
+    for mx_indx in rf_pk2:
+        try:
+            indx.append(mx_indx[sd])
+        # if no peak in mx_indx append none
+        except IndexError as e:
+            indx.append(None)
+    return indx
 
 
 def shortest_path(aoa, max_trial=5000):
     elements = len(aoa)
     result = [[[x], 0] for x in aoa[0]]
     trial = 1
-    while (True):
+    while True:
         if trial == max_trial:
             return None
         trial += 1
@@ -297,14 +303,14 @@ def format_hash(temp):
     """
     get a row hash and create a ComplexProfile object
     """
-    inten = temp['FT'].split('#')
-    members = temp['MB'].split('#')
-    tmp = ComplexProfile(temp['ID'])
+    inten = temp["FT"].split("#")
+    members = temp["MB"].split("#")
+    tmp = ComplexProfile(temp["ID"])
     for idx, acc in enumerate(members):
         if acc in tmp.get_members():
             continue
         # peak picking already here
-        protein = ProteinProfile(acc, inten[idx].split(','))
+        protein = ProteinProfile(acc, inten[idx].split(","))
         protein.calc_peaks()
         tmp.add_member(protein)
     return tmp
@@ -337,13 +343,13 @@ def mp_cmplx(filename, goobj, gaf, w=10, q=5):
     temp = {}
     feat_file = []
     peaks_file = []
-    print('calculating features for ' + filename)
-    for line in open(filename, 'r'):
-        line = line.rstrip('\n')
-        if line.startswith('ID' + '\t'):
-            header = re.split(r'\t+', line)
+    print("calculating features for " + filename)
+    for line in open(filename, "r"):
+        line = line.rstrip("\n")
+        if line.startswith("ID" + "\t"):
+            header = re.split(r"\t+", line)
         else:
-            things = re.split(r'\t+', line)
+            things = re.split(r"\t+", line)
             temp = {}
             temp = dict(zip(header, things))
         if temp:
@@ -362,14 +368,23 @@ def runner(base, go_obo, tsp_go):
     go_tree = go.from_obo(io.resource_path(go_obo))
     gaf = go.read_gaf_out(io.resource_path(tsp_go))
     # get tmp/filename folder
-    cmplx_comb = os.path.join(base, 'cmplx_combined.txt')
+    cmplx_comb = os.path.join(base, "cmplx_combined.txt")
     # print(os.path.dirname(os.path.realpath(__file__)))
     wr, pks = mp_cmplx(filename=cmplx_comb, goobj=go_tree, gaf=gaf)
-    feature_path = os.path.join(base, 'mp_feat_norm.txt')
-    feat_header = ['ID', 'MB', 'COR', 'SHFT', 'DIF',
-                   'W', 'SC_CC', 'SC_MF', 'SC_BP', 'TOTS'
-                   ]
+    feature_path = os.path.join(base, "mp_feat_norm.txt")
+    feat_header = [
+        "ID",
+        "MB",
+        "COR",
+        "SHFT",
+        "DIF",
+        "W",
+        "SC_CC",
+        "SC_MF",
+        "SC_BP",
+        "TOTS",
+    ]
     io.wrout(wr, feature_path, feat_header)
-    peaklist_path = os.path.join(base, 'peak_list.txt')
+    peaklist_path = os.path.join(base, "peak_list.txt")
     # peaklist_path = peaklist_path
-    io.wrout(pks, peaklist_path, ['MB', 'ID', 'PKS', 'SEL'])
+    io.wrout(pks, peaklist_path, ["MB", "ID", "PKS", "SEL"])

@@ -11,7 +11,6 @@ from sklearn.externals import joblib
 import PCProphet.io_ as io
 
 
-
 def deserialize(model):
     """
     return model
@@ -27,18 +26,18 @@ def test_model():
     pass
 
 
-def runner(base, model='./PCProphet/rf_prophet.clf'):
+def runner(base, model="./PCProphet/rf_prophet.clf"):
     """
     get model file and run prediction
     """
-    infile = os.path.join(base, 'mp_feat_norm.txt')
+    infile = os.path.join(base, "mp_feat_norm.txt")
     X, memo = io.prepare_feat(infile)
     clf = deserialize(model)
     prob = np.array(clf.predict_proba(X))
-    pos = np.array(['Yes' if x==1 else 'No' for x in clf.predict(X)])
-    out = np.concatenate((memo, prob, pos.reshape(-1,1)), axis=1)
-    header = ['ID', 'NEG', 'POS', 'IS_CMPLX']
+    pos = np.array(["Yes" if x == 1 else "No" for x in clf.predict(X)])
+    out = np.concatenate((memo, prob, pos.reshape(-1, 1)), axis=1)
+    header = ["ID", "NEG", "POS", "IS_CMPLX"]
     df = pd.DataFrame(out, columns=header)
-    df = df[['ID', 'POS', 'NEG', 'IS_CMPLX']]
-    outfile = os.path.join(base, 'rf.txt')
+    df = df[["ID", "POS", "NEG", "IS_CMPLX"]]
+    outfile = os.path.join(base, "rf.txt")
     df.to_csv(outfile, sep="\t", index=False)

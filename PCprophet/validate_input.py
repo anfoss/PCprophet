@@ -1,12 +1,14 @@
 import PCProphet.exceptions as PCPexc
 import pandas as pd
 
+
 class InputTester(object):
     """
     docstring for InputTester
     validate all inputs before anything
     infile is a panda dataframe
     """
+
     def __init__(self, path, filetype, infile=None):
         super(InputTester, self).__init__()
         self.infile = infile
@@ -14,13 +16,13 @@ class InputTester(object):
         self.path = path
 
     def read_infile(self):
-        self.infile = pd.read_table(self.path, sep = "\t", index_col=False)
+        self.infile = pd.read_table(self.path, sep="\t", index_col=False)
 
     def test_missing_col(self, col):
         """
         check columns in self
         """
-        # print(set(list(self.infile)))
+        #  print(set(list(self.infile)))
         if not all([x in self.infile.columns for x in col]):
             raise PCPexc.MissingColumnError(self.path)
 
@@ -32,7 +34,7 @@ class InputTester(object):
 
     def test_uniqueid(self, totest):
         if self.infile.duplicated(totest).any():
-            print ('The following rows in %s are duplicated'.format(self.path))
+            print("The following rows in %s are duplicated".format(self.path))
             print(self.infile[self.infile.duplicated(totest)])
             raise PCPexc.DuplicateIdentifierError(self.path)
 
@@ -49,21 +51,21 @@ class InputTester(object):
 
     def test_file(self):
         self.read_infile()
-        if self.filetype == 'ids':
-            col = ['Sample', 'cond', 'group', 'short_id' ,'repl', 'fr']
-            unique = ['repl', 'short_id']
+        if self.filetype == "ids":
+            col = ["Sample", "cond", "group", "short_id", "repl", "fr"]
+            unique = ["repl", "short_id"]
             self.test_all(col, unique)
             self.test_empty(col)
-        elif self.filetype == 'db':
+        elif self.filetype == "db":
             try:
-                col = ['ComplexID', 'ComplexName', 'subunits(Gene name)']
-                unique = ['ComplexName', 'ComplexID']
-                self.test_all(col , unique)
+                col = ["ComplexID", "ComplexName", "subunits(Gene name)"]
+                unique = ["ComplexName", "ComplexID"]
+                self.test_all(col, unique)
                 [self.test_empty(x for x in col)]
             except PCPexc.MissingColumnError as e:
-                self.test_missing_col(['protA', 'protB'])
-        elif self.filetype == 'in':
-            col = ['GN', 'ID']
-            unique = ['GN']
+                self.test_missing_col(["protA", "protB"])
+        elif self.filetype == "in":
+            col = ["GN", "ID"]
+            unique = ["GN"]
             self.test_all(col, unique)
             self.test_na()

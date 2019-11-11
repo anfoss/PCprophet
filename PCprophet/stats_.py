@@ -68,7 +68,7 @@ def scale(val, fi, se, factor):
     """
     rescale value between 1 and 0 giving two bounds
     """
-    des = ((val - se) / (fi - se))**factor
+    des = ((val - se) / (fi - se)) ** factor
     return des
 
 
@@ -139,16 +139,16 @@ def aggr_de(desi_dict, desi_weight):
     dummy = list(ds.values())
     dummy.append(m.exp(tmp))
     if debug:
-        io.dump_file('.debug_desi.txt', "\t".join([str(x) for x in dummy]))
+        io.dump_file(".debug_desi.txt", "\t".join([str(x) for x in dummy]))
     return m.exp(tmp)
 
 
-#fast combinations
-def fast_comb(a, _ = None):
+# fast combinations
+def fast_comb(a, _=None):
     n = len(a)
-    L = n*(n-1)//2
+    L = n * (n - 1) // 2
     iterID = 0
     for i in range(n):
-        for j in range(i+1,n):
+        for j in range(i + 1, n):
             iterID += 1
             yield a[i], a[j]

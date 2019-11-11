@@ -166,9 +166,17 @@ def get_clusters(matrix):
     return sorted(list(clusters))
 
 
-def run_mcl(matrix, expansion=2, inflation=2, loop_value=1,
-            iterations=100, pruning_threshold=0.001, pruning_frequency=1,
-            convergence_check_frequency=1, verbose=False):
+def run_mcl(
+    matrix,
+    expansion=2,
+    inflation=2,
+    loop_value=1,
+    iterations=100,
+    pruning_threshold=0.001,
+    pruning_frequency=1,
+    convergence_check_frequency=1,
+    verbose=False,
+):
     """
     Perform MCL on the given similarity matrix
 
@@ -199,12 +207,20 @@ def run_mcl(matrix, expansion=2, inflation=2, loop_value=1,
     printer.print("Expansion: {}".format(expansion))
     printer.print("Inflation: {}".format(inflation))
     if pruning_threshold > 0:
-        printer.print("Pruning threshold: {}, frequency: {} iteration{}".format(
-            pruning_threshold, pruning_frequency, "s" if pruning_frequency > 1 else ""))
+        printer.print(
+            "Pruning threshold: {}, frequency: {} iteration{}".format(
+                pruning_threshold,
+                pruning_frequency,
+                "s" if pruning_frequency > 1 else "",
+            )
+        )
     else:
         printer.print("No pruning")
-    printer.print("Convergence check: {} iteration{}".format(
-        convergence_check_frequency, "s" if convergence_check_frequency > 1 else ""))
+    printer.print(
+        "Convergence check: {} iteration{}".format(
+            convergence_check_frequency, "s" if convergence_check_frequency > 1 else ""
+        )
+    )
     printer.print("Maximum iterations: {}".format(iterations))
     printer.print("{} matrix mode".format("Sparse" if isspmatrix(matrix) else "Dense"))
     printer.print("-" * 50)
@@ -235,7 +251,9 @@ def run_mcl(matrix, expansion=2, inflation=2, loop_value=1,
         if i % convergence_check_frequency == convergence_check_frequency - 1:
             printer.print("Checking for convergence")
             if converged(matrix, last_mat):
-                printer.print("Converged after {} iteration{}".format(i + 1, "s" if i > 0 else ""))
+                printer.print(
+                    "Converged after {} iteration{}".format(i + 1, "s" if i > 0 else "")
+                )
                 break
 
     printer.print("-" * 50)
@@ -263,12 +281,12 @@ def convert_to_adjacency_matrix(matrix):
     for i in range(matrix.shape[0]):
 
         if isspmatrix(matrix):
-            col = find(matrix[:,i])[2]
+            col = find(matrix[:, i])[2]
         else:
-            col = matrix[:,i].T.tolist()[0]
+            col = matrix[:, i].T.tolist()[0]
 
-        coeff = max( Fraction(c).limit_denominator().denominator for c in col )
-        matrix[:,i] *= coeff
+        coeff = max(Fraction(c).limit_denominator().denominator for c in col)
+        matrix[:, i] *= coeff
 
     return matrix
 
@@ -287,7 +305,7 @@ def delta_matrix(matrix, clusters):
     else:
         delta = np.zeros(matrix.shape)
 
-    for i in clusters :
+    for i in clusters:
         for j in permutations(i, 2):
             delta[j] = 1
 
@@ -306,18 +324,20 @@ def modularity(matrix, clusters):
 
     if isspmatrix(matrix):
         matrix_2 = matrix.tocsr(copy=True)
-    else :
+    else:
         matrix_2 = matrix
 
     if is_undirected(matrix):
-        expected = lambda i,j : (( matrix_2[i,:].sum() + matrix[:,i].sum() )*
-                                 ( matrix[:,j].sum() + matrix_2[j,:].sum() ))
+        expected = lambda i, j: (
+            (matrix_2[i, :].sum() + matrix[:, i].sum())
+            * (matrix[:, j].sum() + matrix_2[j, :].sum())
+        )
     else:
-        expected = lambda i,j : ( matrix_2[i,:].sum()*matrix[:,j].sum() )
+        expected = lambda i, j: (matrix_2[i, :].sum() * matrix[:, j].sum())
 
-    delta   = delta_matrix(matrix, clusters)
+    delta = delta_matrix(matrix, clusters)
     indices = np.array(delta.nonzero())
 
-    Q = sum( matrix[i, j] - expected(i, j)/m for i, j in indices.T )/m
+    Q = sum(matrix[i, j] - expected(i, j) / m for i, j in indices.T) / m
 
     return Q

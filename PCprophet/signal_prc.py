@@ -15,11 +15,9 @@ def peak_picking(arr, height=0.1, width=2):
     """
     return indexes of peaks from array giving a peak of minimum height var
     """
-    peaks = signal_processing.find_peaks(arr,
-                                         height=height,
-                                         width=width,
-                                         prominence=[0.2],
-                                         )
+    peaks = signal_processing.find_peaks(
+        arr, height=height, width=width, prominence=[0.2],
+    )
     return peaks
 
 
@@ -86,6 +84,6 @@ def resize_plot(arr, input_fr, output_fr):
     used only for plots, to change in next versions
     """
     if input_fr == output_fr:
-        return [float(x) for x in arr.split('#')]
-    tmp = [float(x) for x in arr.split('#')]
+        return [float(x) for x in arr.split("#")]
+    tmp = [float(x) for x in arr.split("#")]
     return resize(resample(np.array(tmp), int(input_fr), int(output_fr)))

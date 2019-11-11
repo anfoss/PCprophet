@@ -9,11 +9,11 @@ import PCProphet.signal_prc as preproc
 
 
 # standardize and center methods
-def center_arr(hoa, fr_nr='all', norm=True, nat=True, stretch=(True, 72)):
+def center_arr(hoa, fr_nr="all", norm=True, nat=True, stretch=(True, 72)):
     norm = {}
     for k in hoa:
         key = hoa[k]
-        if fr_nr != 'all':
+        if fr_nr != "all":
             key = key[0:(fr_nr)]
         if len([x for x in key if x > 0]) < 2:
             continue
@@ -58,11 +58,11 @@ def runner(infile, db, is_ppi, use_fr):
     argv[3] = is_ppi
     """
     prot = io.read_txt(infile)
-    print("mapping " + infile + ' to ' + db)
+    print("mapping " + infile + " to " + db)
     prot = center_arr(prot, fr_nr=use_fr, stretch=(True, 72))
     pr_df = io.create_df(prot)
     pr_df = pr_df.loc[~(pr_df == 0).all(axis=1)]
-    pr_df.index.name = 'ID'
+    pr_df.index.name = "ID"
     header = []
     temp = {}
     out = []
@@ -72,33 +72,33 @@ def runner(infile, db, is_ppi, use_fr):
         os.makedirs(base)
     # write transf matrix
     dest = os.path.join(base, "transf_matrix.txt")
-    pr_df.to_csv(dest, sep='\t', encoding='utf-8')
-    if is_ppi == 'True':
+    pr_df.to_csv(dest, sep="\t", encoding="utf-8")
+    if is_ppi == "True":
         # cluster the ppi db into a database
         rec_mcl(db)
-        db = io.resource_path('./ppi_db.txt')
-    for line in open(db, 'r'):
-        line = line.rstrip('\n')
-        if line.startswith('ComplexID' + '\t'):
-            header = re.split(r'\t+', line)
+        db = io.resource_path("./ppi_db.txt")
+    for line in open(db, "r"):
+        line = line.rstrip("\n")
+        if line.startswith("ComplexID" + "\t"):
+            header = re.split(r"\t+", line)
         else:
-            things = re.split(r'\t+', line)
+            things = re.split(r"\t+", line)
             temp = dict(zip(header, things))
         if temp:
-            members = re.split(r';', temp['subunits(Gene name)'])
+            members = re.split(r";", temp["subunits(Gene name)"])
             members = [str.upper(x) for x in members]
             memb, feat = [], []
             for cmplx in members:
                 if prot.get(cmplx, None):
-                    feat.append(','.join(str(x) for x in prot[cmplx]))
+                    feat.append(",".join(str(x) for x in prot[cmplx]))
                     memb.append(cmplx)
             if len(feat) > 1:
-                nm = temp['ComplexName'] + '_' + temp['ComplexID']
-                nm = nm.replace('"', '')
-                ft_v = '#'.join(feat)
-                mb_v = '#'.join(memb)
+                nm = temp["ComplexName"] + "_" + temp["ComplexID"]
+                nm = nm.replace('"', "")
+                ft_v = "#".join(feat)
+                mb_v = "#".join(memb)
                 cmplt = float(len(memb)) / float(len(members))
-                out.append('\t'.join([nm, str(cmplt), mb_v, ft_v]))
-    nm = os.path.join(base, 'ann_cmplx.txt')
+                out.append("\t".join([nm, str(cmplt), mb_v, ft_v]))
+    nm = os.path.join(base, "ann_cmplx.txt")
     # nm = io.resource_path(nm)
-    io.wrout(out, nm, ['ID', 'CMPLT', 'MB', 'FT'])
+    io.wrout(out, nm, ["ID", "CMPLT", "MB", "FT"])

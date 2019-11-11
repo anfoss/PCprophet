@@ -16,6 +16,7 @@ class GoGraph(nx.DiGraph):
             Pre-calculated lower bound count (Number of descendants + 1).
             Information content calculation requires precalc lower bounds.
     """
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.alt_ids = {}  # Alternative IDs
@@ -27,10 +28,7 @@ class GoGraph(nx.DiGraph):
 def parse_block(lines):
     """Parse a Term block
     """
-    term = {
-        "alt_id": [],
-        "relationship": []
-    }
+    term = {"alt_id": [], "relationship": []}
     splitkv = re.compile(r"(^[a-zA-Z_]+): (.+)")
     for line in lines:
         m = re.search(splitkv, line)
@@ -96,7 +94,7 @@ def from_obo_lines(lines, ignore_obsolete=True):
         attr = {
             "name": term["name"],
             "namespace": term["namespace"],
-            "is_obsolete": obso
+            "is_obsolete": obso,
         }
         G.add_node(term["id"], **attr)
         for rel in term["relationship"]:
@@ -125,20 +123,20 @@ def read_gaf_out(go_path):
     out = io.makedeephash()
     header = []
     temp = {}
-    for line in open(go_path, mode='r'):
-        line = line.rstrip('\n')
-        if line.startswith(str('ID') + '\t'):
-            header = re.split(r'\t+', line)
+    for line in open(go_path, mode="r"):
+        line = line.rstrip("\n")
+        if line.startswith(str("ID") + "\t"):
+            header = re.split(r"\t+", line)
         else:
-            things = re.split(r'\t+', line)
+            things = re.split(r"\t+", line)
             temp = dict(zip(header, things))
         if len(temp.keys()) > 0:
-            pr = str.upper(temp['GN'])
+            pr = str.upper(temp["GN"])
             for k in temp.keys():
                 # if the key is the same
-                if out[pr][k] and k is not 'ID' or 'GN':
+                if out[pr][k] and k is not "ID" or "GN":
                     out[pr][k] = ";".join([str(out[pr][k]), temp[k]])
-                elif k is not 'ID' or 'GN':
+                elif k is not "ID" or "GN":
                     out[pr][k] = temp[k]
     return out
 
@@ -193,11 +191,11 @@ def parse_go(gn, gaf, go_type):
     """
     tmp = []
     try:
-        tmp = gaf[gn][go_type].split(';')
+        tmp = gaf[gn][go_type].split(";")
     except AttributeError as e:
-        tmp.append('NA')
+        tmp.append("NA")
     tmp = list(set(tmp))
-    return [x for x in tmp if x is not 'NA']
+    return [x for x in tmp if x is not "NA"]
 
 
 def scr(G, gaf, id1, id2, go_type):
@@ -212,12 +210,13 @@ def scr(G, gaf, id1, id2, go_type):
     else:
         return 0
 
+
 # if we can make this one
 def combine_all2(G, gaf, t):
     """
     permute all of blocks of whatever
     """
-    go_type = ['CC', 'MF', 'BP']
+    go_type = ["CC", "MF", "BP"]
     out = []
     for go in go_type:
         x = [scr(G, gaf, x[0], x[1], go) for x in list(st.fast_comb(t, 2))]
@@ -227,7 +226,7 @@ def combine_all2(G, gaf, t):
 
 
 def common_parent_go_ids(terms, go):
-    '''
+    """
     This function finds the common ancestors in the GO
     tree of the list of terms in the input.
     - input:
@@ -235,7 +234,7 @@ def common_parent_go_ids(terms, go):
         - go: the GO Tree object
     Taken from 'A Gene Ontology Tutorial in Python - Model Solutions to Exercises'
     by Alex Warwick
-    '''
+    """
     # Find candidates from first
     rec = go[terms[0]]
     candidates = rec.get_all_parents()
