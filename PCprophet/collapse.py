@@ -6,181 +6,319 @@ from itertools import combinations
 import numpy as np
 from scipy import interpolate
 import pandas as pd
+import networkx as nx
 
 import PCProphet.io_ as io
 import PCProphet.stats_ as st
-import PCProphet.go_fdr as go_fdr
+import PCProphet.go_fdr4 as go_fdr
 from PCProphet.exceptions import NotImplementedError
 
 
-def dedup_cmplx(ref_cmplx, nm):
+class ProphetExperiment(object):
     """
-    get a dict with complex and SORTED protein names inside
-    then it check duplicate keys
-    this is only for duplicates between corum and hyp generation
-    comb is protein_ to id
+    docstring for ProphetExperiment
+    container for a single PCprophet experiment
+    merge all tmp files for a single sec experiment into a complex centric file
+    performs fdr calculation
+    peaks_c attribute is protein centric
     """
-    comb = io.makehash()
-    # sorting is VERY important to keep consistent annotation
-    k = list(ref_cmplx.keys())
-    k.sort()
-    for cm in k:
-        prot = ref_cmplx[cm]
-        prot.sort()
-        nm = "_".join(prot)
-        if comb[nm]:
-            comb[nm] = comb[nm] + "#" + cm
-        else:
-            comb[nm] = cm
-    # now all duplicates are in comb
-    prot2cmplx = {}
-    for ids in ref_cmplx:
-        prot = ref_cmplx[ids]
-        prot.sort()
-        prot2cmplx[ids] = comb["_".join(prot)]
-    return prot2cmplx, comb
+    def __init__(self, feature, peaks, pred, prot_matrix,
+                 annotation, base, nm, mw=None, cal=None):
+        super(ProphetExperiment, self).__init__()
+        self.feature = pd.read_csv(feature, sep="\t", index_col='ID')
+        self.peaks = pd.read_csv(peaks, sep="\t", index_col='MB', error_bad_lines=False)
+        self.pred = pd.read_csv(pred, sep="\t", index_col='ID')
+        self.prot_matrix = pd.read_csv(prot_matrix, sep="\t", index_col='ID')
+        self.annotation = pd.read_csv(annotation, sep="\t", index_col='ID')
+        self.base = base
+        self.condition = nm
+        self.mw = mw
+        self.cal = cal
+        self.fdr = None
+        self.complex_c = None
+        self.peaks_c = None
+
+    def complex_centric_combine(self):
+        """
+        create combined file using the complexID as index
+        """
+        self.complex_c = pd.merge(
+                                  self.feature,
+                                  self.pred,
+                                  how='inner',
+                                  left_index=True,
+                                  right_index=True
+                                  )
+        # this is mistake needs to be Ctrl or Treat
+        self.complex_c['CREP'] = self.condition
+        torm = ['COR', 'DIF', 'NEG', 'SHFT', 'W']
+        self.complex_c.drop(torm, inplace=True, axis=1)
+        self.complex_c['ANN'] = self.annotation['ANN']
+        self.complex_c['CMPLT'] = self.annotation['CMPLT']
+
+    def peaks_inte_combine(self):
+        """
+        combine together peaks and intensity
+        prot A peaks detected peaks sel cmplx intensity
+        """
+        # we need to merge the protein matrix into a single column
+        joinall = lambda x: '#'.join(x.dropna().astype(str))
+        prote = self.prot_matrix[self.prot_matrix.columns[2:]].apply(joinall, axis=1)
+        self.peaks_c = pd.merge(
+                                  self.peaks,
+                                  prote.to_frame(),
+                                  how='inner',
+                                  left_index=True,
+                                  right_index=True
+                                  )
+        self.peaks_c.rename(columns={0:'INT'}, inplace=True)
+        self.peaks_c['CREP'] = self.condition
+
+        return self.peaks_c
+
+    def add_mw(self, mw):
+        # force conversion to float
+        mw2 = {}
+        for k in mw.keys():
+            try:
+                for k2 in k.split(' '):
+                    mw2[k2] = mw[k].replace(',', '')
+            except AttributeError as e:
+                pass
+        self.mw = mw2
+
+    def similarity_graph(self, l, names, ov):
+        """
+        return a network where every edge between two nodes represents
+        jaccard similarity between members > ov
+        """
+        def min_over(l1, l2):
+            inter = len(set(l1).intersection(set(l2)))
+            return inter / min(len(l1), len(l2))
+        m2 = []
+        m = [k.split('#') for k in l]
+        for x in m:
+            m2.append([min_over(x, y) for y in m])
+        arr = np.array(m2)
+        possible =  np.column_stack(np.where(arr>=ov))
+        G = nx.Graph()
+        [G.add_edge(names[p[0]], names[p[1]]) for p in possible]
+        G.remove_edges_from(G.selfloop_edges())
+        return G
+
+    def get_hypo(self):
+        """
+        returns only positive hypothesis
+        """
+        pos = self.complex_c[self.complex_c['IS_CMPLX']=='Yes']
+        return pos[pos['ANN']==0]
+
+    def get_db(self):
+        """
+        returns positive and negative from the database
+        """
+        return self.complex_c[self.complex_c['ANN']==1]
+
+    def get_peaks_inte(self):
+        return self.peaks_c
+
+    def collapse_hypo(self, mode):
+        """
+        collapse hypothesis using mode
+        """
+        pos = self.complex_c[self.complex_c['IS_CMPLX']=='Yes']
+        hypo = pos[pos['ANN']==0]
+        simil_graph = self.similarity_graph(hypo['MB'], hypo.index, ov=0.75)
+        # we need to remove nodes after merging together
+        rm = []
+        # we need to check the peak position too?
+        for test in hypo.index.values:
+            try:
+                tokeep = np.nan
+                tomerge = nx.node_connected_component(simil_graph, test)
+                simil_graph.remove_nodes_from(tomerge)
+                totest = self.complex_c.loc[list(tomerge)]
+                if mode=='GO':
+                    tokeep = self.collapse_go(totest)
+                elif mode=='CAL':
+                    tokeep = self.collapse_mincal(totest)
+                elif mode=='SUPER':
+                    tokeep = self.collapse_largest(totest)
+                elif mode=='eCAL':
+                    raise NotImplementedError
+                rm = np.setdiff1d(np.array(totest.index), np.array(tokeep))
+            except KeyError as e:
+                #this is always gonna happen because we remove in place
+                pass
+        # we remove the positive that we are not going to test in differential
+        # negatives do not matter
+        self.complex_c.drop(index=rm, inplace=True)
+
+    def collapse_largest(self, totest):
+        """
+        select largest complex
+        """
+        totest['l'] = totest['MB'].apply(lambda x: len(x.split('#')))
+        mx = totest[totest['l']==totest['l'].max()]
+        return mx.index
+
+    def collapse_go(self, totest):
+        mx = totest[totest['TOTS']==totest['TOTS'].max()]
+        return mx.index
+
+    def collapse_mincal(self, totest):
+        """
+        collapse to minimun error from calibration curve
+        """
+        calc_mw = lambda x, mw: sum([float(mw[gn]) for gn in x.split('#')])
+        totest['w'] = totest['MB'].apply(calc_mw, mw=self.mw)
+        tmp = self.peaks[self.peaks['ID'].isin(totest.index)]
+        tmp = tmp.groupby(['ID']).mean().SEL.apply(np.round)
+        tmp.replace(self.cal, inplace=True)
+        diff = (totest['w'] - tmp).abs()
+        return diff.idxmin()
+
+    def collapse_empcal(self, totest):
+        """
+        collapse to empirical calibration using curve fitted with
+        average nr subunits and fraction
+        """
+        pass
+
+    def calc_fdr(self, target_fdr):
+        """
+        calculate fdr from GO and add FDR to each complex
+        """
+        fdrfile = os.path.join(self.base, 'fdr.txt')
+        # we need to pullout only positive
+        hyp, fdr = go_fdr.fdr_from_GO(
+                                      self.complex_c,
+                                      target_fdr=float(target_fdr),
+                                      fdrfile=fdrfile
+                                    )
+        fdr = pd.DataFrame(list(fdr), columns=['fdr', 'sumGO', 'ID'])
+        fdr.set_index('ID', inplace=True)
+        self.fdr = fdr
+        self.complex_c = pd.merge(
+                                  self.complex_c,
+                                  self.fdr.drop(['sumGO'], axis=1),
+                                  how='outer',
+                                  left_index=True,
+                                  right_index=True
+                                  )
+        self.complex_c['fdr'].fillna(1, inplace=True)
 
 
-def filter_hypo(ref, hypo, ann):
+
+class MultiExperiment(object):
     """
-    receive a hash of hash and remove every keys where annotation is 0 and
-    not in hypo
+    docstring for MultiExperiment
+    collapse multiple PCProphetExperiments into a single 'combined.txt'
+    file
     """
-    ann = pd.read_csv(ann, sep="\t")
-    #  ann.set_index('ID', inplace=True)
-    # corum
-    test = dict(zip(ann["ID"], ann["ANN"]))
-    hp = [x.replace('"', "") for x in list(hypo.keys())]
-    ref2 = {}
-    for k in list(ref.keys()):
-        k2 = k.replace('"', "")
-        if test[k2] == 0 and k2 not in hp:
-            pass
-        else:
-            ref2[k] = ref[k]
-    return ref2
+    def __init__(self):
+        super(MultiExperiment, self).__init__()
+        self.allexps = []
+        self.all_hypo = None
+        self.complex_c_all = None
+        self.protein_c = None
 
+    def add_exps(self, exp):
+        self.allexps.append(exp)
 
-def collapse_to_mincal(hypo, peaks, mwuni, cal):
-    """
-    collapse protein hypothesis to max calibration
-    need for getting a protein weight files
-    """
-    comb_complex = []
-    ov = 0.75
-    # first sort format the uniprot accession to make it workable
-    mw = io.df2dict(mwuni, "Gene names", "Mass")
-    mw2 = {}
-    for k in mw.keys():
-        # mw is in Th
-        v = float(mw[k].replace(",", ""))
-        if " " in str(k):
-            acc = k.split(" ")
-            tmp = dict(zip(acc, [v] * len(acc)))
-            mw2.update(tmp)
-        else:
-            mw2[k] = v
-    # now we loop through all the possible combination and calc mass
-    for k in hypo.values():
-        tmp = {x: hypo[x]["V"] for x in hypo.keys() if st.overl(k, hypo[x]) >= ov}
-        comb_complex.append(list(tmp.keys()))
-    # TODO need to dedup somehow now every row has a dict might become slow
-    # peaks has complex => protein => peaks
-    # use of complex ID as keys
-    out = []
-    for cmplx_d in comb_complex:
-        # take median of all peaks selected peaks[SEL] in peaks_list.txt
-        # for each proposed complex to merge
-        # use watermark for performance
-        final = 1000000000
-        candidate = ""
-        for acc in cmplx_d:
-            theor = sum([mw2.get(x, 0) for x in peaks[acc].keys()])
-            ave_peak = st.medi([int(v.split("\t")[1]) for v in peaks[acc].values()])
-            obs = cal[round(ave_peak)]
-            if abs(theor - obs) < final:
-                candidate = acc
-        out.append(candidate)
-        # now we end up with list of names
-    toret = {}
-    for k in out:
-        toret[k] = hypo[k]
-    return toret
+    def multi_collapse(self):
+        """
+        performs collapsing across multiple ProphetExperiment
+        retains only core complexes seen in multiple experiments
+        i.e exp 1 A-B-C
+        exp 2 A-B-D
+        exp3 A-B-C
+        keep ABC as most frequent combination of subunits
+        """
+        annot = 0
+        allhypo = pd.concat([exp.get_hypo() for exp in self.allexps])
+        # this is only for later splitting to make sure there is no other $
+        names = list(allhypo.index + '$' + allhypo["CREP"])
+        annot_gr = self.simil_graph_weight(allhypo, names)
+        allhypo['nm'] = names
+        # now we need to uniform the name across all annotation
+        tosub = []
+        count = 1
+        for test in names:
+            try:
+                torename = nx.node_connected_component(annot_gr, test)
+                annot_gr.remove_nodes_from(torename)
+                # select only hypo in torename and rename using cmplx + count
+                tmp = allhypo[allhypo['nm'].isin(torename)]
+                tmp['ID'] = 'cmplx__' + str(count)
+                tosub.append(tmp)
+            except KeyError as e:
+                # remove inplace easier to catch than test has_node
+                pass
+            finally:
+                count +=1
+        self.all_hypo = pd.concat(tosub, axis=0)
 
+    def simil_graph_weight(self, hypo, names):
+        """
+        return a network where every edge between two nodes represents
+        weight is overlap  between subunits
+        """
+        def jaccard(l1, l2):
+            s1 = set(l1)
+            s2 = set(l2)
+            return float(len(s1.intersection(s2))) / float(len(s1.union(s2)))
+        # create a matrix Ncomplex*nfile*nmember
+        m2 = []
+        m = [k.split('#') for k in hypo['MB']]
+        for x in m:
+            m2.append([jaccard(x, y) for y in m])
+        arr = np.array(m2)
+        possible =  np.column_stack(np.where(arr>=0.5))
+        G = nx.Graph()
+        [G.add_edge(names[p[0]], names[p[1]]) for p in possible]
+        G.remove_edges_from(G.selfloop_edges())
+        return G
 
-def collapse_to_largest(hypo, ov=0.5):
-    """
-    collapse to largest subset
-    need to calculate overlap members
-    """
-    # hypo = { 'a':[1,2,3,4], 'b':[2,3], 'd':[7,8,9]}
-    m = []
-    for k in hypo.values():
-        tmp = {x: len(hypo[x]) for x in hypo.keys() if st.overl(k, hypo[x]) >= ov}
-        m.append(max(tmp, key=lambda k: tmp[k]))
-    # TODO need to change this to return a correctly formatted dict
-    toret = io.makehash()
-    for ids in hypo:
-        toret[ids] = []
-        toret[ids].extend(list(hypo[ids]["V"]))
-    return toret
+    def combine_all(self):
+        """
+        get all hypo and all reported and combine to single file
+        """
+        alldb = pd.concat([exp.get_db() for exp in self.allexps])
+        alldb['nm'] = alldb.index + alldb["CREP"]
+        alldb['ID'] = alldb.index
+        self.complex_c_all = pd.concat([alldb, self.all_hypo], ignore_index=True)
+        return True
 
-
-def collapse_to_GO_e(hypo, nr=2, subs=lambda x, y: set(x).issubset(y)):
-    """
-    check GO score for each complex and when decrease stops
-    we start from longest keys i.e from the highest branches of dendrogram
-    check subsets. smarter to check overlap rather than subsets
-    """
-    # good keys are in here
-    tokeep = io.makehash()
-    # print('# hypothesis is ' + str(len(hypo.keys())))
-    # now we keep all keys with nr elements and remove them from the hypo
-    pairs = {k: v for k, v in hypo.items() if len(v["V"]) == nr}
-    shypo = {k: hypo[k] for k in hypo if k not in list(pairs.keys())}
-    # print(pairs)
-    # assert False
-    # for each pairs
-    # now let's check if there is any small hypo
-    l = len(pairs)
-    i = 0
-    for k, prots in pairs.items():
-        cmplx = {k: v for k, v in shypo.items() if subs(prots["V"], v["V"])}
-        if not cmplx:
-            # if we are already at the biggest subset let's just add it and keep it there
-            i += 1
-            tokeep[k] = pairs[k]
-        else:
-            # query from longest to smallest the highest GO
-            sc = max([k["S"] for k in cmplx.values()])
-            cmplx = {k: v for k, v in cmplx.items() if v["S"] == sc}
-            tm = list(cmplx.keys())[0]
-            tokeep[tm] = cmplx[tm]
-    # if we did not add anything to the thing let's drop it
-    if i == l:
-        return hypo
-    else:
-        print("hypothesis collapsed to " + str(len(tokeep.keys())) + " complexes")
-        return collapse_to_GO_e(tokeep, nr + 1)
-
-
-def collapse(hypo, mode, *args):
-    if mode == "GO":
-        return reformat_hypo(collapse_to_GO_e(hypo))
-    elif mode == "CAL":
-        return reformat_hypo(collapse_to_mincal(hypo, *args))
-    elif mode == "SUPER":
-        return reformat_hypo(collapse_to_largest(hypo))
-    else:
-        return reformat_hypo(hypo)
-
-
-def reformat_hypo(hypo):
-    toret = io.makehash()
-    for ids in hypo:
-        toret[ids] = []
-        toret[ids].extend(list(hypo[ids]["V"]))
-    return toret
+    def protein_centric_combine(self):
+        """
+        explode the rows of the every experiment into all proteins
+        """
+        self.complex_c_all['MB'] = self.complex_c_all['MB'].str.split('#')
+        self.protein_c = io.explode(df=self.complex_c_all, lst_cols=['MB'])
+        # nm holds the old name before multi_collapse
+        old2new_id = dict(zip(self.protein_c['nm'], self.protein_c['ID']))
+        old2new_id = {k.split('$')[0]:v for k,v in old2new_id.items()}
+        self.protein_c.drop(['nm', 'IS_CMPLX', 'SC_CC', 'SC_BP', 'SC_MF'], inplace=True, axis=1)
+        self.protein_c[['COND','REPL']] = self.protein_c.CREP.str.split("_",expand=True)
+        tornm = {'TOTS': 'GO', 'POS': 'P', 'ID': 'CMPLX', 'MB':'ID'}
+        self.protein_c.rename(columns=tornm, inplace=True)
+        # now add peak and intensity information
+        mrg = pd.concat([exp.get_peaks_inte() for exp in self.allexps])
+        mrg.replace({"ID": old2new_id}, inplace=True)
+        mrg.rename(columns={'ID':'CMPLX'}, inplace=True)
+        # need to change the names
+        mrg['MB'] = mrg.index
+        # is a left merge because mrg also has all complexes not passing fdr
+        self.protein_c.drop_duplicates(inplace=True)
+        mrg.drop_duplicates(inplace=True)
+        self.protein_c = pd.merge(self.protein_c,
+                                  mrg,
+                                  how='inner',
+                                  left_on=['CMPLX', 'ID', 'CREP'],
+                                  right_on=['CMPLX', 'MB', 'CREP'],
+                                  )
+        return self.protein_c
 
 
 def smart_rename(dic):
@@ -188,100 +326,30 @@ def smart_rename(dic):
     assign MW in MDa or KDa depending on the string
     """
     for k in dic:
-        if len(dic[k].split(".")[0]) > 6:
-            dic[k] = str(round(float(dic[k]) / 1000000, 2)) + " MDa"
+        if len(dic[k].split('.')[0]) > 6:
+            dic[k] = str(round(float(dic[k]) / 1000000, 2)) + ' MDa'
         else:
-            dic[k] = str(round(float(dic[k]) / 1000, 2)) + " KDa"
+            dic[k] = str(round(float(dic[k]) / 1000, 2)) + ' KDa'
     return dic
 
 
 def calc_calibration(calpath):
     """
     calculate the calibration curve from a file with fraction and
-    return a dict fract =>
+    return a dict fract
     """
     fr, mw = io.read_cal(calpath)
     mw = np.array([np.log10(x * 1000) for x in mw])
     fr = np.array(fr)
     f = interpolate.UnivariateSpline(fr, mw, k=1)
-    xnew = np.array(list(range(1, 72)))
+    xnew = np.array(list(range(1, 73)))
     cal_d = dict(zip(xnew, f(xnew)))
-    cal_d = {k: round(10 ** v, 2) for k, v in cal_d.items()}
-    calout = "cal.txt"
-    io.create_file(calout, ["FR", "MW"])
+    cal_d = {k: round(10**v, 2) for k, v in cal_d.items()}
+    calout = 'cal.txt'
+    io.create_file(calout, ['FR', 'MW'])
     k = smart_rename({str(x): str(v) for x, v in cal_d.items()})
     [io.dump_file(calout, "\t".join([x, k[x]])) for x in list(k.keys())]
     return cal_d
-
-
-def reformat_annotation(combined_path, simil=0.75):
-    """
-    uniforms annotation for hypothesis across the samples
-    """
-    hoa = io.read_combined(combined_path)
-    unique = 1
-    # filter reported complexes out
-    final = {}
-    for k in list(hoa.keys()):
-        # let's figure out if it is novel or not
-        if re.findall(r"^cmplx_+(#cmplx_+)*", k):
-            pass
-        else:
-            # reported
-            hoa.pop(k)
-            final[k] = k
-    m = []
-    allk = list(set(hoa.keys()))
-    for k in allk:
-        m.append([st.overl(hoa[k], hoa[x]) for x in allk])
-    m = np.array(m)
-    for ind, row in enumerate(m):
-        # use index based annotation
-        totest = [i for i, x in enumerate(row) if row[i] >= simil]
-        # if more than one complex with high overlap
-        if len(totest) > 1:
-            # if AC & AB simil need to test if BC > simil
-            tmp = set()
-            tmp.add(allk[ind])
-            for pairs in combinations(totest, 2):
-                if m[pairs[0]][pairs[1]] >= simil and pairs[0] != pairs[1]:
-                    [tmp.add(allk[x]) for x in list(pairs)]
-                    m[pairs[0]][pairs[1]] = 0
-                    m[pairs[1]][pairs[0]] = 0
-                else:
-                    # if nothing do not add
-                    continue
-            # get all unique names
-            # create ids
-            idx = "cmplx__" + str(unique)
-            unique += 1
-            # if we already have tmp in final means one complex is shared
-            # print(tmp)
-            # print(tmp)
-            for cmplx in tmp:
-                if cmplx in final.keys():
-                    # print(cmplx)
-                    # print(final)
-                    final[cmplx] = final[cmplx] + ";" + idx
-                else:
-                    final[cmplx] = idx
-        elif allk[ind] in final.keys():
-            # this key was already added
-            pass
-        else:
-            final[allk[ind]] = allk[ind]
-    df = pd.read_csv(combined_path, sep="\t")
-    df["CMPLX"] = [final[x] for x in df["CMPLX"]]
-    # now we need to split ['CMPLX'] based on ;
-    df = (
-        df.set_index(df.columns.drop("CMPLX", 1).tolist())
-        .CMPLX.str.split(";", expand=True)
-        .stack()
-        .reset_index()
-        .rename(columns={0: "CMPLX"})
-        .loc[:, df.columns]
-    )
-    df.to_csv(combined_path, sep="\t", index=False)
 
 
 def runner(tmp_, ids, cal, mw, fdr, mode):
@@ -291,70 +359,47 @@ def runner(tmp_, ids, cal, mw, fdr, mode):
     creates in the tmp directory
     """
     outname = os.path.join(tmp_, "combined.txt")
-    header = ["ID", "CMPLX", "COND", "REPL", "PKS", "SEL", "INT", "P", "CMPLT", "GO"]
+    header = ['ID', 'CMPLX', 'COND','REPL','PKS','SEL','INT','P','CMPLT', 'GO']
     io.create_file(outname, header)
     dir_ = []
     dir_ = [x[0] for x in os.walk(tmp_) if x[0] is not tmp_]
     exp_info = io.read_sample_ids(ids)
     strip = lambda x: os.path.splitext(os.path.basename(x))[0]
-    exp_info = {strip(k): v for k, v in exp_info.items()}
+    exp_info = {strip(k): v for k,v in exp_info.items()}
     wrout = []
-    # # calibration info
     try:
         if os.path.isfile(cal):
             cal = calc_calibration(cal)
     except TypeError as e:
         pass
+    allexps = MultiExperiment()
     for smpl in dir_:
-        # retrieve all info
-        mp_feat_norm = os.path.join(smpl, "mp_feat_norm.txt")
-        pred_out = os.path.join(smpl, "rf.txt")
-        ann = os.path.join(smpl, "cmplx_combined.txt")
-        pred = io.read_pred(pred_out)
-        ref_cmplx = io.read_mp_feat(mp_feat_norm)
-        prot = io.read_matrix(os.path.join(smpl, "transf_matrix.txt"))
-        peak = io.read_peaks(os.path.join(smpl, "peak_list.txt"))
-        hyp, _ = go_fdr.fdr_from_GO(
-            pred=pred_out,
-            db=mp_feat_norm,
-            cmplx_ann=ann,
-            target_fdr=float(fdr),
-            fdrfile=os.path.join(smpl, "fdr.txt"),
-        )
-        smpl = os.path.basename(os.path.normpath(smpl))
-        print(smpl, exp_info[smpl])
-        hyp = collapse(hyp, mode, peak, mw, cal)
-        ref_cmplx = filter_hypo(ref_cmplx, hyp, ann)
-        coll, ref = dedup_cmplx(ref_cmplx, os.path.join(smpl, "collapsed.txt"))
-        mapping = io.create_unique(coll)
-        coll = io.reformat_dict_f(coll, mapping)
-        ref_cmplx = io.reformat_dict_f(ref_cmplx, mapping)
-        pred = io.reformat_dict_f(pred, mapping)
-        cmplt = io.df2dict(ann, "ID", "CMPLT")
-        score = io.df2dict(mp_feat_norm, "ID", "TOTS")
-        cmplx_id = list(mapping.keys())
-        cmplx_id.sort()
-        for ident in cmplx_id:
-            cmplx2 = mapping[ident].replace('"', "")
-            for mb in ref_cmplx[ident]:
-                mb = mb.replace('"', "")
-                try:
-                    pks = peak[cmplx2][mb]
-                    inte = prot[mb]
-                    if inte:
-                        row = [
-                            mb,
-                            coll[ident],
-                            exp_info[smpl],
-                            pks,
-                            prot[mb],
-                            str(pred[ident]),
-                            str(cmplt[cmplx2]),
-                            str(score[cmplx2]),
-                        ]
-                        wrout.append("\t".join(row))
-                except KeyError as e:
-                    raise e
-    [io.dump_file(outname, x) for x in set(wrout)]
-    reformat_annotation(outname)
-    print("all samples processed")
+        base = os.path.basename(os.path.normpath(smpl))
+        print(base, exp_info[base])
+        mp_feat_norm = os.path.join(smpl, 'mp_feat_norm.txt')
+        pred_out = os.path.join(smpl, 'rf.txt')
+        ann = os.path.join(smpl, 'cmplx_combined.txt')
+        prot = os.path.join(smpl, 'transf_matrix.txt')
+        peak = os.path.join(smpl, 'peak_list.txt')
+        exp = ProphetExperiment(
+                                feature=mp_feat_norm,
+                                peaks=peak,
+                                pred=pred_out,
+                                prot_matrix=prot,
+                                annotation=ann,
+                                base=smpl,
+                                nm = exp_info[base],
+                                cal=cal
+                                )
+        if mw is not 'None':
+            exp.add_mw(io.df2dict(mw, 'Gene names', 'Mass'))
+        exp.complex_centric_combine()
+        exp.calc_fdr(fdr)
+        exp.collapse_hypo(mode=mode)
+        exp.peaks_inte_combine()
+        allexps.add_exps(exp)
+    allexps.multi_collapse()
+    allexps.combine_all()
+    final = allexps.protein_centric_combine()
+    outname = os.path.join(tmp_, "combined.txt")
+    final.to_csv(outname, sep="\t", index=False)
