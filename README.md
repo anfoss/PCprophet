@@ -51,7 +51,7 @@ PCprophet.Exceptions.MethodError will be raised in case of not compatibility and
 
 ## Usage
 
-For usage of PCprophet refers to the vignette in ... link
+For usage of PCprophet refers to the [PCprophet_instructions.md][https://github.com/fossatiA/PCprophet/blob/master/PCprophet_instructions.md]
 
 
 ## Built With
