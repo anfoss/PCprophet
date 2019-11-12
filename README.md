@@ -16,7 +16,7 @@ These instructions will get you a copy of the project up and running on your loc
 
 ### Installing
 
-We recommend using [anaconda][https://www.anaconda.com] as it contains all required packages for PCprophet
+We recommend using [anaconda](https://www.anaconda.com) as it contains all required packages for PCprophet
 
 #### Command line version
 
