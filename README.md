@@ -4,8 +4,7 @@ Software toolkit for protein complex prediction and differential analysis of cof
 
 ## Getting Started
 
-These instructions will get you a copy of the project up and running on your local machine, how to test the compatibility with your current Python packages and
-
+These instructions will get you a copy of the project up and running on your local machine and how to test the compatibility with your current Python packages
 ### Prerequisites
 
 * [Python 3.x](https://www.python.org)
@@ -17,17 +16,27 @@ These instructions will get you a copy of the project up and running on your loc
 
 ### Installing
 
+We recommend using [anaconda][https://www.anaconda.com] as it contains all required packages for PCprophet
+
 #### Command line version
 
-For the command line version Java is not necessary and can be skipped.
 ```
 github clone https://github.com/fossatiA/PCprophet PCprophet
 ```
 This will get you a working copy copy of PCprophet
 
+> **note** for the command line version only Python3 and related package dependencies are necessary
+
 #### GUI version
 
-Installing the GUI version of PCprophet can be done by either cloning the repo or by downloading the executable file from ### INSERT here link. The executable file packs together all required dependencies and interpreter (Python). Java needs still to be installed
+
+- Install Java vxx
+- Clone the repo
+
+```
+github clone https://github.com/fossatiA/PCprophet PCprophet
+```
+
 
 ## Running the tests
 
@@ -57,7 +66,7 @@ For usage of PCprophet refers to the [PCprophet_instructions.md][https://github.
 ## Built With
 
 * [Pynstaller](https://www.pyinstaller.org) - Package builder
-* [...](....) - GUI Builder
+* [...](....) - GUI builder
 
 
 ## Contributing
@@ -67,7 +76,7 @@ Please read [CONTRIBUTE.md](https://github.com/fossatiA/PCprophet/blob/master/CO
 
 ## Authors
 
-* **Andrea Fossati** - *Initial work* - [fossatiA](https://github.com/fossatiA)
+* **Andrea Fossati** - *Initial work* - [fossatiA](https://github.com/fossatiA) fossati@imsb.biol.ethz.ch
 * **Chen Li** - *Initial work* - chen.li@monash.edu
 
 See also the list of [contributors](https://github.com/your/project/contributors) who participated in this project.
