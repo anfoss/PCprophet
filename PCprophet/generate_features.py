@@ -58,7 +58,7 @@ class ComplexProfile(object):
         self.pks_ali = []
 
     def test_complex(self):
-        if len(self.members) < 2:
+        if len(self.members) < 2 or len(self.members) > 100:
             return False
         else:
             return True
