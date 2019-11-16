@@ -5,8 +5,8 @@ import numpy as np
 import pandas as pd
 from scipy import cluster
 
-import PCProphet.signal_prc as preproc
-import PCProphet.io_ as io
+import PCprophet.signal_prc as preproc
+import PCprophet.io_ as io
 
 
 # standardize and center methods

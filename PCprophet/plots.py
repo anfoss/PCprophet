@@ -8,8 +8,8 @@ import pandas as pd
 import numpy as np
 
 
-import PCProphet.io_ as io
-import PCProphet.signal_prc as sig
+import PCprophet.io_ as io
+import PCprophet.signal_prc as sig
 
 
 def smart_makefold(path, folder):

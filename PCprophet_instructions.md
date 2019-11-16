@@ -52,7 +52,7 @@ In the PCprophet package, all parameters can be configured either via the ‘Pro
 **-co CAL** Extrapolates the molecular weight from the apex peak for the reported complex using the calibration provided. Then selects the complex with the closer mass to the theoretical weight. If for example extrapolated MW for this set of complexes is 200000 Da then A,B,C will be selected
 
 
-> **Note:** We recommend using doing collapsing based on calibration curve and molecular weight as this enforces the correct mass distribution due to the separation technique used
+> **Note:** __We recommend using doing collapsing based on calibration curve and molecular weight as this enforces the correct mass distribution__
 
 
 
@@ -79,6 +79,13 @@ All of the above parameters have the following default settings
 | -fdr           | 0.75              |0>x>1                                 |
 | -score_missing | 0.5               |0>x>1                                 |
 
+all parameters can be inspected using
+
+```
+python3 main.py --help
+
+
+```
 
 ---
 ### Writing the experimental information file

@@ -8,10 +8,10 @@ import os
 import pandas as pd
 import numpy as np
 
-import PCProphet.io_ as io
-import PCProphet.stats_ as st
-import PCProphet.aligner as aligner
-import PCProphet.parse_go as go_parser
+import PCprophet.io_ as io
+import PCprophet.stats_ as st
+import PCprophet.aligner as aligner
+import PCprophet.parse_go as go_parser
 
 
 def cmplx_stats(cmplx, memb, acc, prot_out, ctrl, treat, score_missing):

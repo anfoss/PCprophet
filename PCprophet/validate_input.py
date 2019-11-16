@@ -1,4 +1,4 @@
-import PCProphet.exceptions as PCPexc
+import PCprophet.exceptions as PCpexc
 import pandas as pd
 
 
@@ -24,19 +24,19 @@ class InputTester(object):
         """
         #  print(set(list(self.infile)))
         if not all([x in self.infile.columns for x in col]):
-            raise PCPexc.MissingColumnError(self.path)
+            raise PCpexc.MissingColumnError(self.path)
 
     def test_empty(self, col):
         for x in col:
             if self.infile[x].isnull().values.any():
                 print(x)
-                raise PCPexc.EmptyColumnError(self.path)
+                raise PCpexc.EmptyColumnError(self.path)
 
     def test_uniqueid(self, totest):
         if self.infile.duplicated(totest).any():
             print("The following rows in %s are duplicated".format(self.path))
             print(self.infile[self.infile.duplicated(totest)])
-            raise PCPexc.DuplicateIdentifierError(self.path)
+            raise PCpexc.DuplicateIdentifierError(self.path)
 
     def test_all(self, *args):
         """
@@ -47,7 +47,7 @@ class InputTester(object):
 
     def test_na(self):
         if self.infile.isnull().values.any():
-            raise PCPexc.NaInMatrixError(self.path)
+            raise PCpexc.NaInMatrixError(self.path)
 
     def test_file(self):
         self.read_infile()
@@ -62,7 +62,7 @@ class InputTester(object):
                 unique = ["ComplexName", "ComplexID"]
                 self.test_all(col, unique)
                 [self.test_empty(x for x in col)]
-            except PCPexc.MissingColumnError as e:
+            except PCpexc.MissingColumnError as e:
                 self.test_missing_col(["protA", "protB"])
         elif self.filetype == "in":
             col = ["GN", "ID"]

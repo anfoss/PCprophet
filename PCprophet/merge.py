@@ -2,7 +2,7 @@ import os
 import sys
 import pandas as pd
 
-import PCProphet.io_ as io
+import PCprophet.io_ as io
 
 
 def split_delim(dels):

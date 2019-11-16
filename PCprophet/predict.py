@@ -8,7 +8,7 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.externals import joblib
 
-import PCProphet.io_ as io
+import PCprophet.io_ as io
 
 
 def deserialize(model):

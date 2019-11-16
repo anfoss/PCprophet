@@ -2,8 +2,8 @@ import re
 import itertools
 import networkx as nx
 
-import PCProphet.io_ as io
-import PCProphet.stats_ as st
+import PCprophet.io_ as io
+import PCprophet.stats_ as st
 
 
 class GoGraph(nx.DiGraph):

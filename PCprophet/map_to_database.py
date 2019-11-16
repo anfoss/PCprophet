@@ -3,9 +3,9 @@ import os
 import re
 import networkx as nx
 
-import PCProphet.io_ as io
-import PCProphet.mcl as mc
-import PCProphet.signal_prc as preproc
+import PCprophet.io_ as io
+import PCprophet.mcl as mc
+import PCprophet.signal_prc as preproc
 
 
 # standardize and center methods

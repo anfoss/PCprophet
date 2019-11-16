@@ -6,10 +6,10 @@ from scipy import stats
 import pandas as pd
 from scipy.ndimage import uniform_filter
 
-import PCProphet.signal_prc as preproc
-import PCProphet.parse_go as go
-import PCProphet.io_ as io
-import PCProphet.stats_ as st
+import PCprophet.signal_prc as preproc
+import PCprophet.parse_go as go
+import PCprophet.io_ as io
+import PCprophet.stats_ as st
 
 
 class ProteinProfile(object):
@@ -33,7 +33,7 @@ class ProteinProfile(object):
         return self.peaks
 
     def calc_peaks(self):
-        pks = list(preproc.peak_picking(self.inten, 0.2, width=4)[0])
+        pks = list(preproc.peak_picking(self.inten)[0])
         # avoid breakage due to float
         self.peaks = [int(x) for x in pks]
 
