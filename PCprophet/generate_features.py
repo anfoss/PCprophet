@@ -326,6 +326,8 @@ def gen_feat(cmplx, goobj, gaf):
         cmplx.calc_width()
         cmplx.pairwise()
         return cmplx.create_row(), cmplx.get_peaks()
+    else:
+        return None, None
 
 
 # wrapper
@@ -355,8 +357,9 @@ def mp_cmplx(filename, goobj, gaf, w=10, q=5):
         if temp:
             cmplx = format_hash(temp)
             feat_row, peaks = gen_feat(cmplx, goobj, gaf)
-            feat_file.append(feat_row)
-            [peaks_file.append(x) for x in list(peaks)]
+            if feat_row and peaks:
+                feat_file.append(feat_row)
+                [peaks_file.append(x) for x in list(peaks)]
     return feat_file, peaks_file
 
 
