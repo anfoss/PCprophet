@@ -110,7 +110,7 @@ def format_cluster(hoa, clust):
     return out
 
 
-def collapse_prot(infile, max_hypothesis, use):
+def collapse_prot(infile, use):
     prot = io.read_txt(infile, "GN")
     prot = center_arr(prot, fr_nr=use, stretch=(True, 72))
     prot2 = {}
@@ -121,7 +121,7 @@ def collapse_prot(infile, max_hypothesis, use):
                 prot2[k] = pks[k]
     pr_df = io.create_df(prot2)
     z = decondense(pr_df, list(pr_df.index))
-    hypothesis = format_cluster(prot, z, max_hypothesis)
+    hypothesis = format_cluster(prot, z)
     #  return peaks2prot(hypothesis, prot),pr_df
     return hypothesis, pr_df
 
