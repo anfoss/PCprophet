@@ -140,5 +140,9 @@ Output/
 tmp/
 
 
-# ignore sample_ids.txt not in test/
+# ignore local files not in test/
 sample_ids.txt
+ProphetConfig.conf
+hsa_MW.txt
+20190513_CORUMcoreComplexes.txt
+cal.txt
