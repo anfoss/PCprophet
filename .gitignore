@@ -141,7 +141,7 @@ tmp/
 
 
 # ignore local files not in test/
-*.txt
+sample_ids.txt
 ProphetConfig.conf
 hsa_MW.txt
 20190513_CORUMcoreComplexes.txt
