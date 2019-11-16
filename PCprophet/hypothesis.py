@@ -100,11 +100,11 @@ def decondense(df, ids):
     return clusters
 
 
-def format_cluster(hoa, clust, max_hypothesis):
+def format_cluster(hoa, clust):
     out = {}
     lk = {k: ",".join(map(str, v)) for k, v in hoa.items()}
     for gn in clust.values():
-        if len(gn) > 1 and len(gn) <= max_hypothesis:
+        if len(gn) > 1 and len(gn) <= 100:
             gn = [x if x in lk else re.sub("_\d+$", "", x) for x in gn]
             out["#".join(gn)] = "#".join([lk[x] for x in gn])
     return out
@@ -126,14 +126,14 @@ def collapse_prot(infile, max_hypothesis, use):
     return hypothesis, pr_df
 
 
-def runner(infile, hypothesis, max_hypothesis, use_fr):
+def runner(infile, hypothesis, use_fr):
     """
     generate hypothesis from infile using all fract fractions and max hypo nr
     """
     if hypothesis is "all":
         print("Generating hypothesis for " + infile)
         hypo, df_s = collapse_prot(
-            infile=infile, max_hypothesis=int(max_hypothesis), use=use_fr
+            infile=infile, use=use_fr
         )
         base = io.file2folder(infile, prefix="./tmp/")
         nm = os.path.join(base, "hypo.txt")
