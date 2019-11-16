@@ -124,3 +124,21 @@ venv.bak/
 .mypy_cache/
 .dmypy.json
 dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# OS junk files
+[Tt]humbs.db
+*.DS_Store
+
+
+# ignore folders used for testing locally
+
+Input/
+Output/
+tmp/
+
+
+# ignore sample_ids.txt not in test/
+sample_ids.txt
