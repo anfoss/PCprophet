@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.externals import joblib
+import joblib
 
 import PCprophet.io_ as io
 
