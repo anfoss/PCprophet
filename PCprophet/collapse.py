@@ -7,6 +7,8 @@ import numpy as np
 from scipy import interpolate
 import pandas as pd
 import networkx as nx
+from sklearn.linear_model import LinearRegression
+
 
 import PCprophet.io_ as io
 import PCprophet.stats_ as st
@@ -47,7 +49,6 @@ class ProphetExperiment(object):
         self.complex_c = pd.merge(
             self.feature, self.pred, how="inner", left_index=True, right_index=True
         )
-        # this is mistake needs to be Ctrl or Treat
         self.complex_c["CREP"] = self.condition
         torm = ["COR", "DIF", "NEG", "SHFT", "W"]
         self.complex_c.drop(torm, inplace=True, axis=1)
@@ -61,13 +62,12 @@ class ProphetExperiment(object):
         """
         # we need to merge the protein matrix into a single column
         joinall = lambda x: "#".join(x.dropna().astype(str))
-        prote = self.prot_matrix[self.prot_matrix.columns[2:]].apply(joinall, axis=1)
+        prote = self.prot_matrix.apply(joinall, axis=1)
         self.peaks_c = pd.merge(
             self.peaks, prote.to_frame(), how="inner", left_index=True, right_index=True
         )
         self.peaks_c.rename(columns={0: "INT"}, inplace=True)
         self.peaks_c["CREP"] = self.condition
-
         return self.peaks_c
 
     def add_mw(self, mw):
@@ -118,16 +118,41 @@ class ProphetExperiment(object):
     def get_peaks_inte(self):
         return self.peaks_c
 
+    def interpolate_fract(self):
+        """
+        calculate fraction to number of compelxes using linear interpolation
+        """
+        # get db positive
+        db_pos = self.get_db()
+        db_pos = db_pos[db_pos["IS_CMPLX"] == "Yes"]
+        #  calc mean per complex
+        # try with highest completness
+        db_pos = db_pos[db_pos["CMPLT"] > 0.75]
+        peaks2cmplx = self.peaks.groupby("ID").median().round()
+        db_pos["sub"] = db_pos["MB"].apply(lambda x: len(x.split("#")))
+        cm = pd.merge(peaks2cmplx, db_pos, on=["ID"])
+        y, x = cm["sub"].values, cm["SEL"].values
+        z = np.polyfit(x, y, 2)
+        p = np.poly1d(z)
+        peak_dic = dict(zip(list(peaks2cmplx.index), list(peaks2cmplx["SEL"])))
+        # actually from here can already get the diff
+        theor = {k: p(k) for k in list(range(1, 73))}
+        return theor, peaks2cmplx["SEL"]
+
     def collapse_hypo(self, mode):
         """
         collapse hypothesis using mode
         """
         pos = self.complex_c[self.complex_c["IS_CMPLX"] == "Yes"]
         hypo = pos[pos["ANN"] == 0]
-        simil_graph = self.similarity_graph(hypo["MB"], hypo.index, ov=0.75)
+        simil_graph = self.similarity_graph(hypo["MB"], hypo.index, ov=0.5)
         # we need to remove nodes after merging together
         rm = []
         # we need to check the peak position too?
+        # better to get db positive here
+        lr, peaks = None, None
+        if mode == "eCAL":
+            lr, peaks = self.interpolate_fract()
         for test in hypo.index.values:
             try:
                 tokeep = np.nan
@@ -174,12 +199,25 @@ class ProphetExperiment(object):
         diff = (totest["w"] - tmp).abs()
         return diff.idxmin()
 
-    def collapse_empcal(self, totest):
+    def collapse_empcal(self, totest, lr, sel):
         """
         collapse to empirical calibration using curve fitted with
         average nr subunits and fraction
+        need to collect the same nr of fraction and
         """
+        # totest['sub'] = totest['MB'].apply(lambda x: len(x.split('#')))
+        # totest['peak'] = sel
+        # pk = list(totest['peak'])
+        # subs = list(totest['sub'])
+        # print(pk)
+        # print(lr)
+        # [print(lr[x]) for x in pk]
         pass
+        # TODO need to fix this
+        # totest['d'] = totest.apply(lambda x: abs(lr[x['peaks'] - row['sub']]))
+        # print(totest['d'])
+
+        assert False
 
     def calc_fdr(self, target_fdr):
         """
@@ -270,7 +308,7 @@ class MultiExperiment(object):
         for x in m:
             m2.append([jaccard(x, y) for y in m])
         arr = np.array(m2)
-        possible = np.column_stack(np.where(arr >= 0.5))
+        possible = np.column_stack(np.where(arr >= 0.25))
         G = nx.Graph()
         [G.add_edge(names[p[0]], names[p[1]]) for p in possible]
         G.remove_edges_from(G.selfloop_edges())
@@ -319,6 +357,22 @@ class MultiExperiment(object):
             left_on=["CMPLX", "ID", "CREP"],
             right_on=["CMPLX", "MB", "CREP"],
         )
+        # reorder to not break differential
+        order = [
+            "ID",
+            "CMPLX",
+            "COND",
+            "REPL",
+            "PKS",
+            "SEL",
+            "INT",
+            "P",
+            "CMPLT",
+            "GO",
+            "CREP",
+        ]
+        self.protein_c = self.protein_c[order]
+
         return self.protein_c
 
 
@@ -359,9 +413,6 @@ def runner(tmp_, ids, cal, mw, fdr, mode):
     then loop for each file and create a combined file which contains all files
     creates in the tmp directory
     """
-    outname = os.path.join(tmp_, "combined.txt")
-    header = ["ID", "CMPLX", "COND", "REPL", "PKS", "SEL", "INT", "P", "CMPLT", "GO"]
-    io.create_file(outname, header)
     dir_ = []
     dir_ = [x[0] for x in os.walk(tmp_) if x[0] is not tmp_]
     exp_info = io.read_sample_ids(ids)
