@@ -11,12 +11,12 @@ def gauss_filter(arr, sigma=1, order=0):
     return filt
 
 
-def peak_picking(arr, height=0.1, width=2):
+def peak_picking(arr, height=0.1, width=2, prominence):
     """
     return indexes of peaks from array giving a peak of minimum height var
     """
     peaks = signal_processing.find_peaks(
-        arr, height=height, width=width, prominence=[0.2],
+        arr, height=height, width=width
     )
     return peaks
 
