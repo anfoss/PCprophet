@@ -1,4 +1,4 @@
-# !/usr/bin/env python3
+ # !/usr/bin/env python3
 
 import argparse
 import configparser
@@ -190,7 +190,6 @@ def main():
         hypothesis.runner(
             infile=infile,
             hypothesis=config["PREPROCESS"]["merge"],
-            max_hypothesis=config["PREPROCESS"]["max_hypothesis"],
             use_fr=config["PREPROCESS"]["all_fract"],
         )
         # sample specific folder
