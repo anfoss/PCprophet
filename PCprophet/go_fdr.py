@@ -5,9 +5,8 @@ import networkx as nx
 import random as random
 from sklearn.mixture import GaussianMixture
 
-
-import PCProphet.io_ as io
-import PCProphet.stats_ as st
+import PCprophet.io_ as io
+import PCprophet.stats_ as st
 
 
 def db2ppi(list_sep):
