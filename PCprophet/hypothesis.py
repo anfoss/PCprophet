@@ -34,7 +34,7 @@ def split_peaks(prot_arr, pr, skp=0):
     returns
     'right_bases': array([32]), 'left_bases': array([7])
     """
-    peaks = list(preproc.peak_picking(prot_arr, 0.2, width=4))
+    peaks = list(preproc.peak_picking(prot_arr))
     left_bases = peaks[1]["left_bases"]
     right_bases = peaks[1]["right_bases"]
     fr_peak = peaks[0]
