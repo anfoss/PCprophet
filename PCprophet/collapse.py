@@ -107,7 +107,7 @@ class ProphetExperiment(object):
         returns only positive hypothesis
         """
         pos = self.complex_c[self.complex_c["IS_CMPLX"] == "Yes"]
-        return pos[pos["ANN"] == 0]
+        return pos[pos["ANN"] != 1]
 
     def get_db(self):
         """
@@ -144,7 +144,7 @@ class ProphetExperiment(object):
         collapse hypothesis using mode
         """
         pos = self.complex_c[self.complex_c["IS_CMPLX"] == "Yes"]
-        hypo = pos[pos["ANN"] == 0]
+        hypo = pos[pos["ANN"] != 1]
         simil_graph = self.similarity_graph(hypo["MB"], hypo.index, ov=0.5)
         # we need to remove nodes after merging together
         rm = []
@@ -205,6 +205,8 @@ class ProphetExperiment(object):
         average nr subunits and fraction
         need to collect the same nr of fraction and
         """
+        raise NotImplementedError
+        # TODO need to fix this
         # totest['sub'] = totest['MB'].apply(lambda x: len(x.split('#')))
         # totest['peak'] = sel
         # pk = list(totest['peak'])
@@ -212,22 +214,20 @@ class ProphetExperiment(object):
         # print(pk)
         # print(lr)
         # [print(lr[x]) for x in pk]
-        pass
-        # TODO need to fix this
         # totest['d'] = totest.apply(lambda x: abs(lr[x['peaks'] - row['sub']]))
         # print(totest['d'])
 
-        assert False
 
     def calc_fdr(self, target_fdr):
         """
         calculate fdr from GO and add FDR to each complex
         """
         fdrfile = os.path.join(self.base, "fdr.txt")
-        # we need to pullout only positive
         hyp, fdr = go_fdr.fdr_from_GO(
-            self.complex_c, target_fdr=float(target_fdr), fdrfile=fdrfile
-        )
+                                        cmplx_comb=self.complex_c,
+                                        target_fdr=float(target_fdr),
+                                        fdrfile=fdrfile
+                                    )
         fdr = pd.DataFrame(list(fdr), columns=["fdr", "sumGO", "ID"])
         fdr.set_index("ID", inplace=True)
         self.fdr = fdr
@@ -238,7 +238,7 @@ class ProphetExperiment(object):
             left_index=True,
             right_index=True,
         )
-        self.complex_c["fdr"].fillna(1, inplace=True)
+        self.complex_c["fdr"].fillna(0, inplace=True)
 
 
 class MultiExperiment(object):
@@ -308,7 +308,7 @@ class MultiExperiment(object):
         for x in m:
             m2.append([jaccard(x, y) for y in m])
         arr = np.array(m2)
-        possible = np.column_stack(np.where(arr >= 0.25))
+        possible = np.column_stack(np.where(arr >= 0.5))
         G = nx.Graph()
         [G.add_edge(names[p[0]], names[p[1]]) for p in possible]
         G.remove_edges_from(G.selfloop_edges())
@@ -427,7 +427,7 @@ def runner(tmp_, ids, cal, mw, fdr, mode):
     allexps = MultiExperiment()
     for smpl in dir_:
         base = os.path.basename(os.path.normpath(smpl))
-        print(base, exp_info[base])
+        # print(base, exp_info[base])
         mp_feat_norm = os.path.join(smpl, "mp_feat_norm.txt")
         pred_out = os.path.join(smpl, "rf.txt")
         ann = os.path.join(smpl, "cmplx_combined.txt")
