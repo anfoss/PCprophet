@@ -150,21 +150,15 @@ def fdr_from_GO(cmplx_comb, target_fdr, fdrfile):
     use positive predicted annotated from db to estimate hypothesis fdr
     """
     pos = cmplx_comb[cmplx_comb['IS_CMPLX']=='Yes']
-    hypo = pos[pos['ANN']==0]
+    hypo = pos[pos['ANN']!=1]
     db = pos[pos['ANN']==1]
     ppi_db = db2ppi(db['MB'])
-
     io.create_file(fdrfile, ['fdr', 'sumGO'])
     io.create_file(fdrfile + '.conf_m', ['tp' 'fp' 'tn' 'fn'])
-    # we need to filter for positive
-    if hypo.empty or len(set(hypo['TOTS'])) == 1:
-        return filter_hypo(hypo, db, 0)
     estimated_fdr = 0.5
     if target_fdr > 0 :
         thresh = list(hypo['TOTS'])
         go_cutoff = 0
-        # TODO flow here is quite meh probably better to fail in calc_pdf?
-        # if there are more than 100 hypothesis for every reported complex
         if hypo.shape[0]/db.shape[0] > 100 :
             print('Not enough reported for FDR estimation, using GMM model')
             pool, labels = calc_pdf(hypo, decoy)
