@@ -81,12 +81,12 @@ def calc_pdf(decoy, target):
 
     input == two pandas dataframe with target GO distr and decoy GO distr
     """
-    pool = np.concatenate([decoy, target]).reshape(-1,1)
-    # remove 0 no need
-    X = pool[pool>0].reshape(-1,1)
+    X = np.concatenate([decoy, target]).reshape(-1,1)
+    # remove 0 no need we can keep the 0 anyway we will drop it later
+    X = X[X>0].reshape(-1,1)
     # is this needed?? rescale to 1 and then log so higher score gets lower p
-    X = -1*np.log(X/np.sum(X))
-    label = ['d'] * decoy.shape[0] + ['t'] * target.shape[0]
+    # X = -1 * np.log(X/np.sum(X))
+    label = ['d'] * decoy[decoy>0].shape[0] + ['t'] * target[target>0].shape[0]
     label = np.array(label).reshape(-1,1)
     # need to check if converge or not
     clf = GaussianMixture(
@@ -96,18 +96,25 @@ def calc_pdf(decoy, target):
                             max_iter = 1000
                             # could be reg_covar
                          )
-    # NOTE is this needed? at the end we need only the class and the go
     # easy to check classes as np.max(distr1) > np.max(distr2) = distr1 is tp
-    logprob = clf.fit(X).score_samples(X)
-    posterior = clf.predict_proba(X)
-    pdf = np.exp(logprob)
-    pdf_individual = posterior * pdf[:, np.newaxis]
-    # this predicts class
-    pred_ = clf.predict(X.reshape(-1,1)).reshape(-1,1)
-    l = np.hstack((posterior[:,1].reshape(-1,1), X, label, pred_))
-    # np.savetxt('posterior.csv', l, fmt='%s')
-    # now return l splitted in pred tp and pred fp
-    return l, posterior
+    # posterior = clf.predict_proba(X)
+    pred_ = clf.fit(X).predict(X.reshape(-1,1)).reshape(-1,1)
+    return np.hstack((X, pred_))
+
+
+def split_posterior(X):
+    """
+    split classes into tp and fp based on class label after gmm fit
+    """
+    # force to have tp as max gmm moves label around
+    d0 = X[X[:,1]==0]
+    d1 = X[X[:,1]==1]
+    # d1 = X[X['class']==0]['go'].values
+    # d2 =  X[X['class']==1]['go'].values
+    if np.max(d0) > np.max(d1):
+        return d0, d1
+    else:
+        return d1, d0
 
 def fdr_from_pep(fp, tp, target_fdr=0.5):
     """
@@ -117,11 +124,10 @@ def fdr_from_pep(fp, tp, target_fdr=0.5):
     """
     def fdr_point(p, fp, tp):
         fps = fp[fp>=p].shape[0]
-        if fps > 0:
-            fps/(fps + tp[tp>p].shape[0])
-        else:
-            return 0
-    fdr = fp.apply_along_axis(lambda p, : fdr_point(p, fp, tp))
+        tps = tp[tp>=p].shape[0]
+        return fps/(fps + tps)
+    roll_fdr = np.vectorize(lambda p: fdr_point(p, fp, tp))
+    fdr = roll_fdr(fp)
     return fdr, np.percentile(fp, target_fdr*100)
 
 
@@ -145,33 +151,50 @@ def filter_hypo(hypo, db, go_cutoff):
     return filt
 
 
+def eval_complexes(cmplx):
+    """
+    return appropriate split from database
+    use either all positive if more than 50 else use all db
+    return None otherwise
+    """
+    if cmplx[(cmplx['IS_CMPLX']=='Yes') & (cmplx['ANN']==1)].shape[0] > 50:
+        return cmplx[cmplx['IS_CMPLX']=='Yes' & cmplx['ANN']==1]
+    elif cmplx[cmplx['ANN']==1].shape[0] > 100:
+        return cmplx[cmplx['ANN']==1]
+    else:
+        # return empty so can quack
+        return pd.DataFrame()
+
+
 def fdr_from_GO(cmplx_comb, target_fdr, fdrfile):
     """
     use positive predicted annotated from db to estimate hypothesis fdr
     """
-    pos = cmplx_comb[cmplx_comb['IS_CMPLX']=='Yes']
+    pos = cmplx_comb[cmplx_comb['IS_CMPLX']=='Yes' ]
     hypo = pos[pos['ANN']!=1]
-    db = pos[pos['ANN']==1]
-    ppi_db = db2ppi(db['MB'])
+    db = cmplx_comb[cmplx_comb['ANN']==1]
+    db_use = eval_complexes(cmplx_comb)
     io.create_file(fdrfile, ['fdr', 'sumGO'])
-    io.create_file(fdrfile + '.conf_m', ['tp' 'fp' 'tn' 'fn'])
     estimated_fdr = 0.5
     if target_fdr > 0 :
         thresh = list(hypo['TOTS'])
         go_cutoff = 0
-        if hypo.shape[0]/db.shape[0] > 100 :
+        # if empty then GMM
+        if db_use.empty:
+            # take any positive
+            repo = cmplx_comb[(cmplx_comb['IS_CMPLX']=='Yes') & (cmplx_comb['ANN']==1)]
             print('Not enough reported for FDR estimation, using GMM model')
-            pool, labels = calc_pdf(hypo, decoy)
-            thresh_fdr, go_cutoff = fdr_from_pep()
-            # if pool:
-            #     pass
-            #     # now we calculate fdr based on thresh
-            # else:
-            #     print('GMM fail, a prefixed threshold will be used')
-            #     thresh = [0.5]
+            # then we need to extract the go sum only
+            go_hypo = hypo['TOTS'].values
+            go_repo = repo['TOTS'].values
+            predicted = calc_pdf(go_hypo, go_repo)
+            tp, fp = split_posterior(predicted)
+            thresh_fdr, go_cutoff = fdr_from_pep(tp, fp, target_fdr)
         else:
+            ppi_db = db2ppi(db_use['MB'])
             thresh_fdr, conf_m = calc_fdr(hypo, ppi_db, thresh)
             go_cutoff = estimate_cutoff(thresh_fdr, thresh, target_fdr)
+            io.create_file(fdrfile + '.conf_m', ['tp' 'fp' 'tn' 'fn'])
             for pairs in zip(conf_m, thresh):
                 io.dump_file(fdrfile + '.conf_m', "\t".join(map(str, pairs)))
         nm = list(hypo.index)
