@@ -94,7 +94,7 @@ def calc_pdf(decoy, target):
                             covariance_type='full',
                             tol = 1e-24,
                             max_iter = 1000
-                            # could be reg_covar
+                            random_state=42
                          )
     # easy to check classes as np.max(distr1) > np.max(distr2) = distr1 is tp
     # posterior = clf.predict_proba(X)
