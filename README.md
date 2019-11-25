@@ -38,26 +38,6 @@ github clone https://github.com/fossatiA/PCprophet PCprophet
 ```
 
 
-## Running the tests
-
-The test module included with PCprophet tests most of the used function and the compatibility of the pickled model with the installed Sklearn version
-
-### Test model
-
-
-```
-python3 PCprophet/test/test_model.py
-```
-PCprophet.Exceptions.ModelError will be raised in case of not compatibility and it will be necessary to downgrade the current Sklearn to a compatible version
-
-### Test functions
-
-```
-python3 PCprophet/test/test_methods.py
-```
-
-PCprophet.Exceptions.MethodError will be raised in case of not compatibility and it will be necessary to downgrade the current Sklearn/Scipy/Pandas to a compatible version
-
 ## Usage
 
 For usage of PCprophet refers to the [PCprophet_instructions.md](https://github.com/fossatiA/PCprophet/blob/master/PCprophet_instructions.md)
