@@ -256,56 +256,48 @@ def plot_recall(out_fold):
     plot barplot recovery complexes
     """
     csfont = {"fontname": "sans-serif"}
-    fig, ax = plt.subplots(figsize=(12, 9), facecolor="white")
+    fig, ax = plt.subplots(figsize=(6, 6), facecolor="white")
     repo = os.path.join(out_fold, "ComplexReport.txt")
     repo = pd.read_csv(repo, sep="\t", index_col=False)
-    repo = repo[(repo["Reported"] == "Reported") & (repo["Is Complex"] == "Positive")]
-    sum_e = repo.groupby(["Condition", "Replicate"]).size().reset_index()
+    repo = repo[repo["Is Complex"] == "Positive"]
+    sum_e = repo.groupby(["Condition", "Replicate", "Reported"]).size().reset_index()
     sum_e = sum_e.values
     space = 0.3
     conditions = np.unique(sum_e[:, 0])
     repl = np.unique(sum_e[:, 1])
     n = len(repl)
     width = (1 - space) / (len(repl))
-    # construct cmap manually
-    # we n colors and use always the same
-    cols = [
-        "#1f77b4",
-        "#ff7f0e",
-        "#2ca02c",
-        "#d62728",
-        "#9467bd",
-        "#8c564b",
-        "#e377c2",
-        "#7f7f7f",
-        "#bcbd22",
-        "#17becf",
-    ]
-    col = cols[: len(set(conditions))]
-
     # Create a set of bars at each position
     for i, cond in enumerate(repl):
         indeces = range(1, len(conditions) + 1)
-        vals = sum_e[sum_e[:, 1] == cond][:, 2].astype(np.float)
+        rep = sum_e[(sum_e[:, 1] == cond) & (sum_e[:,2] == 'Reported')]
+        rep = rep[:, 3].astype(np.float)
+        nov = sum_e[(sum_e[:, 1] == cond) & (sum_e[:,2] == 'Novel')]
+        nov = nov[:, 3].astype(np.float)
         pos = [j - (1 - space) / 2.0 + i * width for j in indeces]
-        ax.bar(pos, vals, width=width, color=col, edgecolor="black", linewidth=1)
+        ax.bar(pos, rep, width=width, color="#ff7f0e", edgecolor="black", linewidth=1, label='Reported')
+        ax.bar(pos, nov, width=width, bottom=rep, color="#1f77b4", edgecolor="black", linewidth=1, label='Novel')
     # Set the x-axis tick labels to be equal to the repl
     ax.set_xticks(indeces)
     ax.set_xticklabels(conditions)
     plt.setp(plt.xticks()[1], rotation=0)
 
     # Add the axis labels
-    ax.set_ylabel("Positive reported", fontsize=14, **csfont)
+    ax.set_ylabel("# Positive", fontsize=14, **csfont)
     ax.set_xlabel("", fontsize=14, **csfont)
+    ax.tick_params(axis='both', which='major', labelsize=12)
+    ax.tick_params(axis='both', which='minor', labelsize=12)
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+    ax.tick_params(axis='both', which='both', length=0)
 
     # Add a legend
     handles, labels = ax.get_legend_handles_labels()
     ax.legend(handles[::-1], labels[::-1], loc="upper left")
-    fig.savefig(os.path.join(out_fold, "RecallDatabase.pdf"), dpi=600)
+    fig.savefig(os.path.join(out_fold, "RecallDatabase.pdf"), dpi=800)
     plt.show()
     plt.close()
     return True
-
 
 def plot_recalibration(tmp_fold, out_fold):
     """
@@ -333,24 +325,6 @@ def plot_recalibration(tmp_fold, out_fold):
     plot_alignment(not_aligned, aligned, peaks, out_fold, "COND", "Condition")
 
 
-def plot_gauss(decoy, pdf_individual, x):
-    """
-    plot gauss separation for target and decoy with estimated fdr
-    """
-    fig, ax = plt.subplots(figsize=(12, 9), facecolor="white")
-    ax.hist(decoy, 30, density=True, histtype="stepfilled", alpha=0.4, label="decoy")
-    ax.plot(x, pdf_individual, ".")
-    # ax.plot(x, pdf, '-k')
-    ax.text(0.04, 0.96, "Best-fit Mixture", ha="left", va="top", transform=ax.transAxes)
-    ax.set_xlabel("$x$")
-    ax.set_ylabel("$p(x)$")
-    plt.show()
-
-
-def plot_responsabilities(responsibilities, x):
-    pass
-
-
 def runner(tmp_fold, out_fold, target_fdr, sid):
     """
     performs all plots using matplotlib
@@ -365,7 +339,7 @@ def runner(tmp_fold, out_fold, target_fdr, sid):
     plot_fdr(tmp_fold, out_fold, target_fdr)
     plot_recall(out_fold)
     plot_recalibration(tmp_fold, out_fold)
-
+    assert False
     # now fails
     plot_positive(out_fold, tmp_fold, sid)
     #  plot_differential(out_fold, tmp_fold, sid)
