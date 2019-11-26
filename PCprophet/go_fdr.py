@@ -82,22 +82,15 @@ def calc_pdf(decoy, target):
     input == two pandas dataframe with target GO distr and decoy GO distr
     """
     X = np.concatenate([decoy, target]).reshape(-1,1)
-    # remove 0 no need we can keep the 0 anyway we will drop it later
-    X = X[X>0].reshape(-1,1)
-    # is this needed?? rescale to 1 and then log so higher score gets lower p
-    # X = -1 * np.log(X/np.sum(X))
-    label = ['d'] * decoy[decoy>0].shape[0] + ['t'] * target[target>0].shape[0]
+    label = ['d'] * decoy.shape[0] + ['t'] * target.shape[0]
     label = np.array(label).reshape(-1,1)
-    # need to check if converge or not
     clf = GaussianMixture(
                             n_components=2,
                             covariance_type='full',
                             tol = 1e-24,
-                            max_iter = 1000
+                            max_iter = 1000,
                             random_state=42
                          )
-    # easy to check classes as np.max(distr1) > np.max(distr2) = distr1 is tp
-    # posterior = clf.predict_proba(X)
     pred_ = clf.fit(X).predict(X.reshape(-1,1)).reshape(-1,1)
     return np.hstack((X, pred_))
 
@@ -107,16 +100,14 @@ def split_posterior(X):
     split classes into tp and fp based on class label after gmm fit
     """
     # force to have tp as max gmm moves label around
-    d0 = X[X[:,1]==0]
-    d1 = X[X[:,1]==1]
-    # d1 = X[X['class']==0]['go'].values
-    # d2 =  X[X['class']==1]['go'].values
+    d0 = X[X[:,1]==0][:,0]
+    d1 = X[X[:,1]==1][:,0]
     if np.max(d0) > np.max(d1):
         return d0, d1
     else:
         return d1, d0
 
-def fdr_from_pep(fp, tp, target_fdr=0.5):
+def fdr_from_pep(tp, fp, target_fdr=0.5):
     """
     estimate fdr from array generated in calc_pdf
     returns estimated fdr at each point of TP and also the go cutoff
@@ -142,12 +133,12 @@ def estimate_cutoff(fdr_arr, thresh, target_fdr=0.5):
     return fdr2thresh[fdr_arr[idx]]
 
 
-def filter_hypo(hypo, db, go_cutoff):
+def filter_hypo(combined, go_cutoff):
     """
     return object for collapse py
     """
-    mask = ((hypo["ANN"] == 0) & (hypo["TOTS"] >= go_cutoff))
-    filt = db.append(hypo[mask], ignore_index=True)
+    mask = ((combined["ANN"] == 0) & (combined["TOTS"] <= go_cutoff))
+    filt = combined.drop(combined[mask].index)
     return filt
 
 
@@ -171,17 +162,19 @@ def fdr_from_GO(cmplx_comb, target_fdr, fdrfile):
     use positive predicted annotated from db to estimate hypothesis fdr
     """
     pos = cmplx_comb[cmplx_comb['IS_CMPLX']=='Yes' ]
-    hypo = pos[pos['ANN']!=1]
+    # remove laready here the hypothesis with 0 go
+    hypo = pos[(pos['ANN']!=1) & (pos['TOTS'] > 0)]
     db = cmplx_comb[cmplx_comb['ANN']==1]
     db_use = eval_complexes(cmplx_comb)
     io.create_file(fdrfile, ['fdr', 'sumGO'])
     estimated_fdr = 0.5
     if target_fdr > 0 :
-        thresh = list(hypo['TOTS'])
+        thresh = list(pos['TOTS'])
         go_cutoff = 0
+        nm = list(hypo.index)
         # if empty then GMM
         if db_use.empty:
-            # take any positive
+            # we update nm here
             repo = cmplx_comb[(cmplx_comb['IS_CMPLX']=='Yes') & (cmplx_comb['ANN']==1)]
             print('Not enough reported for FDR estimation, using GMM model')
             # then we need to extract the go sum only
@@ -189,7 +182,7 @@ def fdr_from_GO(cmplx_comb, target_fdr, fdrfile):
             go_repo = repo['TOTS'].values
             predicted = calc_pdf(go_hypo, go_repo)
             tp, fp = split_posterior(predicted)
-            thresh_fdr, go_cutoff = fdr_from_pep(tp, fp, target_fdr)
+            thresh_fdr, go_cutoff = fdr_from_pep(tp=tp, fp=fp, target_fdr=target_fdr)
         else:
             ppi_db = db2ppi(db_use['MB'])
             thresh_fdr, conf_m = calc_fdr(hypo, ppi_db, thresh)
@@ -197,10 +190,9 @@ def fdr_from_GO(cmplx_comb, target_fdr, fdrfile):
             io.create_file(fdrfile + '.conf_m', ['tp' 'fp' 'tn' 'fn'])
             for pairs in zip(conf_m, thresh):
                 io.dump_file(fdrfile + '.conf_m', "\t".join(map(str, pairs)))
-        nm = list(hypo.index)
         for pairs in zip(thresh_fdr, thresh):
             io.dump_file(fdrfile, "\t".join(map(str, pairs)))
         print("Estimated GO cutoff is {}".format(go_cutoff))
-        return filter_hypo(hypo, db, go_cutoff), zip(thresh_fdr, thresh, nm)
+        return filter_hypo(cmplx_comb, go_cutoff), zip(thresh_fdr, thresh, nm)
     else:
-        return filter_hypo(hypo, db, 0), zip([0], [0], [0])
+        return filter_hypo(cmplx_comb, 0), zip([0], [0], [0])

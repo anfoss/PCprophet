@@ -231,8 +231,9 @@ class ProphetExperiment(object):
         fdr = pd.DataFrame(list(fdr), columns=["fdr", "sumGO", "ID"])
         fdr.set_index("ID", inplace=True)
         self.fdr = fdr
+        # but there is no filtering !!
         self.complex_c = pd.merge(
-            self.complex_c,
+            hyp,
             self.fdr.drop(["sumGO"], axis=1),
             how="outer",
             left_index=True,
