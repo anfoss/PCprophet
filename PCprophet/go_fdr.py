@@ -148,13 +148,14 @@ def eval_complexes(cmplx):
     use either all positive if more than 50 else use all db
     return None otherwise
     """
-    if cmplx[(cmplx['IS_CMPLX']=='Yes') & (cmplx['ANN']==1)].shape[0] > 50:
-        return cmplx[cmplx['IS_CMPLX']=='Yes' & cmplx['ANN']==1]
-    elif cmplx[cmplx['ANN']==1].shape[0] > 100:
-        return cmplx[cmplx['ANN']==1]
-    else:
+    # if cmplx[(cmplx['IS_CMPLX']=='Yes') & (cmplx['ANN']==1)].shape[0] > 50:
+    #     # return only positive database
+    #     return cmplx[(cmplx['IS_CMPLX']=='Yes') & (cmplx['ANN']==1)]
+    # elif cmplx[cmplx['ANN']==1].shape[0] > 100:
+    #     return cmplx[cmplx['ANN']==1]
+    # else:
         # return empty so can quack
-        return pd.DataFrame()
+    return pd.DataFrame()
 
 
 def fdr_from_GO(cmplx_comb, target_fdr, fdrfile):
