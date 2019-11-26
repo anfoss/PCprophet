@@ -175,7 +175,7 @@ def plot_alignment(not_ali, ali, peaks, fold, labelrow, plottype):
     plt.rcParams["grid.color"] = "k"
     plt.rcParams["grid.linestyle"] = ":"
     plt.rcParams["grid.linewidth"] = 0.5
-    fig, (ax1, ax2) = plt.subplots(figsize=(12, 9), facecolor="white", nrows=2)
+    fig, (ax1, ax2) = plt.subplots(figsize=(6, 6), facecolor="white", nrows=2)
     not_ali["INT"] = not_ali["no_al"]
     for k in ([ax1, not_ali], [ax2, ali]):
         # select in peaks
@@ -225,8 +225,11 @@ def plot_fdr(tmp_fold, out_fold, target_fdr=0.5):
         plt.plot(x_sort, y_sort, label=ids, linewidth=1.5, linestyle="-")
     plt.legend(loc="best", prop={"family": "sans-serif", "size": 16})
     plt.xlabel("GO score", fontsize=14, **csfont)
-    plt.ylabel("False Discovery Rate positive", fontsize=14, **csfont)
+    plt.ylabel("False Discovery Rate", fontsize=14, **csfont)
     plt.axhline(y=float(target_fdr), linestyle="--", color="black")
+    ax.set_xlabel("GO score", fontsize=14, **csfont)
+    ax.tick_params(axis='both', which='major', length=0, labelsize=12)
+    ax.tick_params(axis='both', which='minor', length=0, labelsize=12)
     fig.savefig(os.path.join(out_fold, "FalseDiscoveryRate.pdf"), dpi=600)
     plt.close()
     return True
@@ -277,6 +280,7 @@ def plot_recall(out_fold):
         pos = [j - (1 - space) / 2.0 + i * width for j in indeces]
         ax.bar(pos, rep, width=width, color="#ff7f0e", edgecolor="black", linewidth=1, label='Reported')
         ax.bar(pos, nov, width=width, bottom=rep, color="#1f77b4", edgecolor="black", linewidth=1, label='Novel')
+
     # Set the x-axis tick labels to be equal to the repl
     ax.set_xticks(indeces)
     ax.set_xticklabels(conditions)
@@ -293,11 +297,12 @@ def plot_recall(out_fold):
 
     # Add a legend
     handles, labels = ax.get_legend_handles_labels()
-    ax.legend(handles[::-1], labels[::-1], loc="upper left")
+    ax.legend(handles[:2], labels[:2], loc="upper left")
     fig.savefig(os.path.join(out_fold, "RecallDatabase.pdf"), dpi=800)
     plt.show()
     plt.close()
     return True
+
 
 def plot_recalibration(tmp_fold, out_fold):
     """
