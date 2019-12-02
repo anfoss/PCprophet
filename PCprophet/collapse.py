@@ -24,7 +24,6 @@ class ProphetExperiment(object):
     performs fdr calculation
     peaks_c attribute is protein centric
     """
-
     def __init__(
         self, feature, peaks, pred, prot_matrix, annotation, base, nm, mw=None, cal=None
     ):
@@ -373,7 +372,6 @@ class MultiExperiment(object):
             "CREP",
         ]
         self.protein_c = self.protein_c[order]
-
         return self.protein_c
 
 
@@ -428,7 +426,7 @@ def runner(tmp_, ids, cal, mw, fdr, mode):
     allexps = MultiExperiment()
     for smpl in dir_:
         base = os.path.basename(os.path.normpath(smpl))
-        # print(base, exp_info[base])
+        print(base, exp_info[base])
         mp_feat_norm = os.path.join(smpl, "mp_feat_norm.txt")
         pred_out = os.path.join(smpl, "rf.txt")
         ann = os.path.join(smpl, "cmplx_combined.txt")
