@@ -17,7 +17,7 @@ from PCprophet import generate_features as generate_features
 from PCprophet import hypothesis as hypothesis
 from PCprophet import map_to_database as map_to_database
 from PCprophet import merge as merge
-from PCprophet import differential_v4 as differential
+from PCprophet import differential as differential
 from PCprophet import predict as predict
 from PCprophet import plots as plots
 
@@ -123,15 +123,6 @@ def create_config():
         default="GO",
         action="store",
     )
-    parser.add_argument(
-        "-sc",
-        help="score for missing proteins in differential analysis",
-        dest="score_missing",
-        action="store",
-        default=0.5,
-        type=float,
-    )
-    parser.add_argument("-w", dest="weight_pred", action="store", default=1, type=float)
     args = parser.parse_args()
 
     # create config file
@@ -152,18 +143,6 @@ def create_config():
         "merge": args.merge,
     }
     config["POSTPROCESS"] = {"fdr": args.fdr, "collapse_mode": args.collapse}
-    config["DIFFERENTIAL"] = {
-        "score_missing": args.score_missing,
-        "weight_pred": args.weight_pred,
-        "fold_change": "-5,-2,2,5",
-        "correlation": "0.3,0.9",
-        "ratio": "-2,-0.5,0.5,2",
-        "shift": "-10,-5,5,10",
-        "weight_fold_change": 1,
-        "weight_correlation": 0.75,
-        "weight_ratio": 0.25,
-        "weight_shift": 0.5,
-    }
 
     # create config ini file for backup
     with open("ProphetConfig.conf", "w") as conf:
@@ -210,20 +189,11 @@ def main():
     )
     combined_file = os.path.join(config["GLOBAL"]["temp"], "combined.txt")
     ids = ["fold_change", "correlation", "ratio", "shift"]
-    # keep it here for future implementation
-    thresholds = [list(map(float, config["DIFFERENTIAL"][x].split(","))) for x in ids]
-    desi_thresholds = dict(zip(ids, thresholds))
-    weights = [float(config["DIFFERENTIAL"]["weight_" + x]) for x in ids]
-    desi_weights = dict(zip(ids, weights))
     differential.runner(
         combined_file,
         config["GLOBAL"]["sid"],
         config["GLOBAL"]["Output"],
-        config["GLOBAL"]["temp"],
-        config["DIFFERENTIAL"]["score_missing"],
-        config["DIFFERENTIAL"]["weight_pred"],
-        desi_thresholds,
-        desi_weights,
+        config["GLOBAL"]["temp"]
     )
     plots.runner(
         config["GLOBAL"]["temp"],

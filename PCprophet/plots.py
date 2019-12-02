@@ -2,6 +2,7 @@ import os
 from itertools import combinations
 import matplotlib.pyplot as plt
 import matplotlib
+from matplotlib.backends.backend_pdf import PdfPages
 
 #  matplotlib.use('Agg')
 import pandas as pd
@@ -192,7 +193,6 @@ def plot_alignment(not_ali, ali, peaks, fold, labelrow, plottype):
             title_fontsize=16,
             prop={"family": "sans-serif", "size": 16},
         )
-
     ax1.set_ylabel("Pre alignement", fontsize=14, **csfont)
     ax2.set_ylabel("Post alignement", fontsize=14, **csfont)
     ax2.set_xlabel("Fraction (arb. unit)", fontsize=14, **csfont)
@@ -215,7 +215,7 @@ def plot_fdr(tmp_fold, out_fold, target_fdr=0.5):
     """
     # initialize empty figure
     csfont = {"fontname": "sans-serif"}
-    fig, ax = plt.subplots(figsize=(12, 9), facecolor="white")
+    fig, ax = plt.subplots(figsize=(6, 6), facecolor="white")
     ax.grid(color="grey", linestyle="--", linewidth=0.25, alpha=0.5)
     for sample in [x[0] for x in os.walk(tmp_fold) if x[0] is not tmp_fold]:
         fdrfile = os.path.join(sample, "fdr.txt")
@@ -228,8 +228,11 @@ def plot_fdr(tmp_fold, out_fold, target_fdr=0.5):
     plt.ylabel("False Discovery Rate", fontsize=14, **csfont)
     plt.axhline(y=float(target_fdr), linestyle="--", color="black")
     ax.set_xlabel("GO score", fontsize=14, **csfont)
-    ax.tick_params(axis='both', which='major', length=0, labelsize=12)
-    ax.tick_params(axis='both', which='minor', length=0, labelsize=12)
+    ax.tick_params(axis='both', which='major', labelsize=12)
+    ax.tick_params(axis='both', which='minor', labelsize=12)
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+    ax.tick_params(axis='both', which='both', length=0)
     fig.savefig(os.path.join(out_fold, "FalseDiscoveryRate.pdf"), dpi=600)
     plt.close()
     return True
@@ -299,7 +302,6 @@ def plot_recall(out_fold):
     handles, labels = ax.get_legend_handles_labels()
     ax.legend(handles[:2], labels[:2], loc="upper left")
     fig.savefig(os.path.join(out_fold, "RecallDatabase.pdf"), dpi=800)
-    plt.show()
     plt.close()
     return True
 
@@ -329,6 +331,28 @@ def plot_recalibration(tmp_fold, out_fold):
     peaks["SEL"] = peaks.SEL.round()
     plot_alignment(not_aligned, aligned, peaks, out_fold, "COND", "Condition")
 
+
+def plot_baysean(probs_prot_d, probs_prot_zmn, probs_cplx_d, probs_cplx_fl, out_fold):
+    myfig=plt.figure()
+
+    plt.clf()
+    plt.subplots_adjust(hspace=0.4)
+    plt.subplot(211)
+    plt.ylabel("P(I=1|D)", fontsize="10")
+    plt.title("Differentially regulated proteins",
+              x=.5, y=1.1, fontsize="15")
+    plt.plot(probs_prot_d, "r-", linewidth=3)
+    plt.plot(probs_prot_zmn, "g-", linewidth=3)
+
+    plt.subplot(212)
+    plt.title("Differentially regulated protein complexes",
+              x=.5, y=1.1, fontsize="15")
+    plt.plot(probs_cplx_d, "r-", linewidth=3)
+    plt.plot(probs_cplx_fl, "g-", linewidth=3)
+    plt.ylabel("P(I=1|D)", fontsize="10")
+
+    with PdfPages(os.path.join(out_fold, "DifferentialRegulation.pdf")) as pdf:
+        pdf.savefig(myfig)
 
 def runner(tmp_fold, out_fold, target_fdr, sid):
     """
