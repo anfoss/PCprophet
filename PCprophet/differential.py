@@ -608,7 +608,7 @@ def runner(infile, sample, outf, temp):
             # use the value i.e short_name in sample_ids.txt
             prot["Condition"] = ids[cnd]
             cmplx["Condition"] = ids[cnd]
-            cmplx['Rank'] = cmplx['PB4DEX'].rank(ascending=False)
+            cmplx['Rank'] = cmplx['PB4DEX'].rank(method='max', ascending=False)
             allprot.append(prot)
             allcmplx.append(cmplx)
     allprot = pd.concat(allprot)
