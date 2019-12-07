@@ -453,13 +453,32 @@ def extract_local_peak(row, q=12):
     # move from fraction to index
     pk = row['SEL']-1
     tmp =  row['INT'].split('#')
-    if pk < q:
+    if q > 72/2:
+        return tmp
+    elif pk < q:
         return tmp[:(q*2)]
     elif row['SEL'] > (72-q):
         return tmp[-(q*2):]
     else:
         return tmp[(pk-q):(pk+q)]
 
+
+def extract_inte(df, q=72, split_cmplx=False):
+    """
+    modify combined to extract intensity and returns a df
+    """
+    if split_cmplx:
+        df['CMPLX'] = df['CMPLX'].str.split('#')
+        df = io.explode(df=df, lst_cols=['CMPLX'])
+    df['pksINT'] = df.apply(lambda x: extract_local_peak(x,q), axis=1)
+    vals = list(map("{0}".format, list(range(1, q+1))))
+    df[vals] = pd.DataFrame(df.pksINT.values.tolist(), index= df.index)
+
+    #
+    df[vals] = df[vals].apply(pd.to_numeric, errors="coerce")
+    # fix nan if any
+    df[vals] = df[vals].fillna(value=0)
+    return df, vals
 
 
 def create_complex_report(infile, sto, sid, outfile="ComplexReport.txt"):
@@ -580,7 +599,7 @@ def runner(infile, sample, outf, temp):
     ids = io.read_sample_ids_diff(sample)
     aligned_path = os.path.join(temp, "complex_align.txt")
     not_aligned_path = os.path.join(temp, "complex_not_align.txt")
-    aligner.runner(infile, aligned_path, not_aligned=not_aligned_path)
+    # aligner.runner(infile, aligned_path, not_aligned=not_aligned_path)
     # cmplx_dic, cmplx_pr, repl = read_cmplx_data(infile, tmp_fold=temp)
 
     # create report if no differential
@@ -589,17 +608,7 @@ def runner(infile, sample, outf, temp):
     create_complex_report(infile, sto, sample, outfile=complex_report_out)
     ppi_report_out = os.path.join(outf, "PPIReport.txt")
     create_ppi_report(infile=complex_report_out, outfile=ppi_report_out)
-    combined = pd.read_csv(infile, sep="\t")
-    # now we need to select local peak for every protein +- 10
-
-    # combined['pksINT'] = combined.apply(extract_local_peak, axis=1)
-    # combined[vals] = pd.DataFrame(combined.pksINT.values.tolist(), index= combined.index)
-    vals = list(map("{0}".format, list(range(1, 73))))
-    combined[vals] = combined['INT'].str.split('#', expand=True)
-    combined[vals] = combined[vals].apply(pd.to_numeric, errors="coerce")
-    # fix nan if any
-    combined[vals] = combined[vals].fillna(value=0)
-
+    combined, vals = extract_inte(pd.read_csv(infile, sep="\t"), q=72)
     allprot, allcmplx = [], []
     for cnd in ids.keys():
         if cnd != "Ctrl":
@@ -608,7 +617,6 @@ def runner(infile, sample, outf, temp):
             # use the value i.e short_name in sample_ids.txt
             prot["Condition"] = ids[cnd]
             cmplx["Condition"] = ids[cnd]
-            cmplx['Rank'] = cmplx['PB4DEX'].rank(method='max', ascending=False)
             allprot.append(prot)
             allcmplx.append(cmplx)
     allprot = pd.concat(allprot)
