@@ -482,6 +482,11 @@ def extract_inte(df, q=72, split_cmplx=False):
 
 
 def create_complex_report(infile, sto, sid, outfile="ComplexReport.txt"):
+    def rescale_fr(x, fr):
+        try:
+            return str(round(x["SEL"] * fr[x["COND"]] / 72))
+        except ValueError as e:
+            return -1
     print("Creating complex level report\n")
     sto = pd.read_csv(sto, sep="\t")
     info = pd.read_csv(sid, sep="\t")
@@ -494,13 +499,10 @@ def create_complex_report(infile, sto, sid, outfile="ComplexReport.txt"):
         print("Calibration not provided\nThe MW will not be estimated")
     combined.drop(["PKS", "INT", "ID"], inplace=True, axis=1)
     com = combined.groupby(["CMPLX", "COND", "REPL"], as_index=False).mean()
-    xx = lambda x, y, on: pd.merge(x, y, how="left", left_on=on, right_on=on)
-    on = ["CMPLX", "COND"]
-    mrg = xx(sto, com, on)
+    mrg = pd.merge(sto, com, on=['CMPLX', 'COND'])
     # and convert the fraction sel to the new one
     fr = dict(zip(info["cond"], info["fr"]))
     mrg["is complex"] = np.where(mrg["P"] >= 0.5, "Positive", "Negative")
-    rescale_fr = lambda x, fr: str(round(x["SEL"] * fr[x["COND"]] / 72))
     mrg["SEL"] = mrg.apply(lambda row: rescale_fr(row, fr), axis=1)
     search = []
     for v in mrg["CMPLX"]:
@@ -534,6 +536,7 @@ def create_complex_report(infile, sto, sid, outfile="ComplexReport.txt"):
     ]
     # now rename all the columns
     mrg = mrg.rename(dict(zip(list(mrg), header)), axis=1)
+    mrg[['Completness']] = mrg[['Completness']].fillna(value=0)
     mrg.to_csv(outfile, sep="\t", index=False)
 
 
