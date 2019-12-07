@@ -137,7 +137,7 @@ def filter_hypo(combined, go_cutoff):
     """
     return object for collapse py
     """
-    mask = ((combined["ANN"] == 0) & (combined["TOTS"] <= go_cutoff))
+    mask = ((combined["ANN"] !=1) & (combined["TOTS"] <= go_cutoff))
     filt = combined.drop(combined[mask].index)
     return filt
 
