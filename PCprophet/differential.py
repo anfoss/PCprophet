@@ -207,6 +207,7 @@ class BayesMANOVA:
                 resdict["PB4DEX"].append(None)
         return pd.DataFrame(resdict)
 
+
     def mrgllh4pcplx(self, cplx2pids, pids2dat, m=None, PI1=0.5):
         """
         calculation of marginal log likelihoods of protein
@@ -328,8 +329,7 @@ def prepcplxdata(
     valcols,
     dologtrans=True,
     minval=10 ** -17,
-    trg2indmap=True,
-):
+    trg2indmap=True):
     """
     prepcplxdata prepares proteins or protein complexes to be
     analysed for differential expression.
@@ -371,7 +371,6 @@ def prepcplxdata(
     allcpx = np.array(allcpx)
     for cplid in cpx:
         cplx2pids[cplid] = allpids[allcpx == cplid].tolist()
-
     alltrgs = dfrm[trgcol].tolist()
     trgs = list(set(alltrgs))
 
@@ -408,7 +407,6 @@ def score_complexes(dfrm, valcols=list(map("{0}".format, list(range(1, 73))))):
     (cplx2pids, pids, Xdfrm, pids2dat) = prepcplxdata(
         dfrm, pidcol="ID", cplxcol="CMPLX", trgcol="COND", valcols=valcols
     )
-
     bmn = BayesMANOVA()
     # calculate Bayesian probabilities of differential on protein.
     # default mode with location of the prior mean being the sample location.
@@ -491,6 +489,8 @@ def create_complex_report(infile, sto, sid, outfile="ComplexReport.txt"):
     sto = pd.read_csv(sto, sep="\t")
     info = pd.read_csv(sid, sep="\t")
     combined = pd.read_csv(infile, sep="\t")
+    # drop single protein now
+    combined = combined[combined['P']!=-1]
     cal = None
     try:
         cal = pd.read_csv("./cal.txt", sep="\t")
@@ -631,8 +631,13 @@ def runner(infile, sample, outf, temp):
         "LGMLLHN": "LogMarginalLikelihood Null",
         "LGMLLHA": "LogMarginalLikelihood Alternative",
     }
+    # remove single prot accession i.e single
+    allcmplx = allcmplx[~allcmplx['ID'].isin(allprot['ID'])]
+
     allprot.rename(columns=nwnm, inplace=True)
+    allprot.rename(columns={'ID': 'Gene name'}, inplace=True)
     allcmplx.rename(columns=nwnm, inplace=True)
+    allprot.rename(columns={'ID': 'Complex identifier'}, inplace=True)
     allprot.to_csv(
         os.path.join(outf, "DifferentialProteinReport.txt"), sep="\t", index=False
     )
