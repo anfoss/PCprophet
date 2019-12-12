@@ -259,6 +259,7 @@ class ProphetExperiment(object):
         check duplicate complexes and create unique identifier
         add protein trace with complexID == protname so match between condition
         for removal use P != -1
+        we add the index of max arr as peak
         '''
         df = pd.DataFrame(columns=cols, index=self.prot_matrix.index)
         df['ID'] = self.prot_matrix.index
@@ -268,7 +269,8 @@ class ProphetExperiment(object):
         df['P'] = -1
         df['CREP'] = self.condition
         df[['COND', 'REPL']] = df.CREP.str.split('_', expand=True)
-        df[['PKS', 'SEL', 'CMPLT', 'GO']] = np.nan
+        df['SEL'] = self.prot_matrix.apply(lambda x: np.argmax(x), axis=1)
+        df[['PKS', 'CMPLT', 'GO']] = 0
         return df
 
 
