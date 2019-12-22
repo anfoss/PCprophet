@@ -26,7 +26,7 @@ def test_model():
     pass
 
 
-def runner(base, model="./PCProphet/rf_equal.clf"):
+def runner(base, model="./PCprophet/rf_equal.clf"):
     """
     get model file and run prediction
     """

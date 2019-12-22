@@ -212,6 +212,24 @@ def scr(G, gaf, id1, id2, go_type):
 
 
 # if we can make this one
+def combine_all(G, gaf, t, filename, repo):
+    """
+    permute all of blocks of whatever
+    """
+    go_type = ["CC", "MF", "BP"]
+    out = []
+    for go in go_type:
+        sumf = []
+        for x in list(st.fast_comb(t, 2)):
+            k = scr(G, gaf, x[0], x[1], go)
+            sumf.append(k)
+            io.dump_file(filename, "{}\t{}\t{}\t{}".format(x[0], x[1], k, repo))
+        out.append(sum(sumf) / len(sumf))
+    out.append(sum(out))
+    return "\t".join([str(x) for x in out])
+
+
+# if we can make this one
 def combine_all2(G, gaf, t):
     """
     permute all of blocks of whatever

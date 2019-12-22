@@ -13,6 +13,7 @@ These instructions will get you a copy of the project up and running on your loc
 * [Pandas >0.23](https://pandas.pydata.org)
 * [Scipy >1.1.0](https://www.scipy.org)
 * [Java vxx](https://www.java.com)
+* [Igraph](https://igraph.org/python/)
 
 ### Installing
 

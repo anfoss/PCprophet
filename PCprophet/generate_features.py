@@ -44,7 +44,7 @@ class ComplexProfile(object):
     formed by a list of ProteinProfile
     """
 
-    def __init__(self, name):
+    def __init__(self, name, rep):
         super(ComplexProfile, self).__init__()
         self.name = name
         self.goscore = 0
@@ -56,6 +56,7 @@ class ComplexProfile(object):
         self.cor = []
         self.diff = []
         self.pks_ali = []
+        self.repo = rep
 
     def test_complex(self):
         if len(self.members) < 2 or len(self.members) > 100:
@@ -86,8 +87,13 @@ class ComplexProfile(object):
         for k in self.pks.keys():
             yield "{}\t{}\t{}".format(k, self.get_name(), self.pks[k])
 
-    def calc_go_score(self, goobj, gaf):
-        self.score = go.combine_all2(goobj, gaf, np.array(self.get_members()))
+    def calc_go_score(self, goobj, gaf, go_ppi):
+        self.score = go.combine_all(goobj,
+                                     gaf,
+                                     np.array(self.get_members()),
+                                     go_ppi,
+                                     self.repo
+                                     )
 
     def format_ids(self):
         """
@@ -305,7 +311,7 @@ def format_hash(temp):
     """
     inten = temp["FT"].split("#")
     members = temp["MB"].split("#")
-    tmp = ComplexProfile(temp["ID"])
+    tmp = ComplexProfile(temp["ID"], temp['ANN'])
     for idx, acc in enumerate(members):
         if acc in tmp.get_members():
             continue
@@ -317,12 +323,12 @@ def format_hash(temp):
 
 
 # @io.timeit
-def gen_feat(cmplx, goobj, gaf):
+def gen_feat(cmplx, goobj, gaf, go_ppi):
     """
     receive a single row and generate feature calc
     """
     if cmplx.test_complex() and cmplx.align_peaks():
-        cmplx.calc_go_score(goobj, gaf)
+        cmplx.calc_go_score(goobj, gaf, go_ppi)
         cmplx.calc_width()
         cmplx.pairwise()
         return cmplx.create_row(), cmplx.get_peaks()
@@ -331,7 +337,7 @@ def gen_feat(cmplx, goobj, gaf):
 
 
 # wrapper
-def mp_cmplx(filename, goobj, gaf, w=10, q=5):
+def mp_cmplx(filename, goobj, gaf, go_ppi):
     """
     map complex into 3 vector => cor vectors
     shift peak
@@ -356,7 +362,7 @@ def mp_cmplx(filename, goobj, gaf, w=10, q=5):
             temp = dict(zip(header, things))
         if temp:
             cmplx = format_hash(temp)
-            feat_row, peaks = gen_feat(cmplx, goobj, gaf)
+            feat_row, peaks = gen_feat(cmplx, goobj, gaf, go_ppi)
             if feat_row and peaks:
                 feat_file.append(feat_row)
                 [peaks_file.append(x) for x in list(peaks)]
@@ -372,8 +378,12 @@ def runner(base, go_obo, tsp_go):
     gaf = go.read_gaf_out(io.resource_path(tsp_go))
     # get tmp/filename folder
     cmplx_comb = os.path.join(base, "cmplx_combined.txt")
+    # now we open PPI file
+    ppi_go = os.path.join(base, "ppi_go.txt")
+    io.create_file(ppi_go, ['protA', 'protB', 'GO', 'ANN'])
     # print(os.path.dirname(os.path.realpath(__file__)))
-    wr, pks = mp_cmplx(filename=cmplx_comb, goobj=go_tree, gaf=gaf)
+    wr, pks = mp_cmplx(filename=cmplx_comb, goobj=go_tree,
+                       gaf=gaf, go_ppi=ppi_go)
     feature_path = os.path.join(base, "mp_feat_norm.txt")
     feat_header = [
         "ID",

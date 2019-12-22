@@ -55,14 +55,6 @@ In the PCprophet package, all parameters can be configured either via the ‘Pro
 > **Note:** __We recommend using doing collapsing based on calibration curve and molecular weight as this enforces the correct mass distribution__
 
 
-
-##### Differential analysis parameters:
-
-```
--score_missing  Score for missing proteins
-
-```
-
 All of the above parameters have the following default settings
 
 
@@ -77,14 +69,11 @@ All of the above parameters have the following default settings
 | -merge         | 'all'             |['all', 'reference']                  |
 | -co            | 'GO'              |['GO', 'SUPER', 'CAL', 'eCAL', 'NONE']|
 | -fdr           | 0.75              |0>x>1                                 |
-| -score_missing | 0.5               |0>x>1                                 |
 
 all parameters can be inspected using
 
 ```
 python3 main.py --help
-
-
 ```
 
 ---
@@ -161,13 +150,21 @@ In case differential analysis was performed two additional text files and one fo
 PCprophet generates the following QC plots
 
 - __ConditionAlignement.pdf__: Profile plot of common complexes across all the provided experiments used to realign the data.
+
 - __FalseDiscoveryRate.pdf__: an FDR plot where the positive hypotheses are filtered to control for false discovery rate using the positive complexes database provided. If not provided a fixed threshold of 0.5 is used.
 
 - __RecallDatabase.pdf__: % of positive predicted complexes on the total size of the database provided.
 
 One folder for each __short_id__ will be generated. Within that folder all the positive and negative complexes from the database  are plotted together with the novel positive complexes identified by PCprophet
 
+
+### Import results into Cytoscape
+
+Both __PPIReport.txt__ and __DifferentialProteinReport.txt__ are fully compatible with Cytoscape import without the need for any formatting. As example here we import __DifferentialProteinReport.txt__ to gain some insights into which type of
+
 ### FAQ and solution to common problems
+
+* __Why in ComplexReport.txt the complexID has several complexes concatenated by # ?__ We are using the parsimony principle, thereby complexes for which there are not enough evidence (i.e with the same subunits identified across the experiment) are reported in the same complex group
 
 * __-CAL flag for collapsing returns an error__! Check that the format of the calibration file. __A correctly formatted calibration file will have the fraction first as integer and the molecular weight in KDa as integer__
 
