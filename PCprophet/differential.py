@@ -18,6 +18,7 @@ import scipy.stats as sta
 
 import PCprophet.io_ as io
 import PCprophet.aligner as aligner
+import PCprophet.stats_ as st
 
 
 # datatype which we use for mapping protein ids to a corresponding
@@ -478,6 +479,99 @@ def extract_inte(df, q=72, norm=False, split_cmplx=False):
     return df, vals
 
 
+def average_stoichiometry(stoi_dict):
+    """
+    receive a stoichiometry dict with
+    dict[protein] => [stoic, stoic stoich]
+    and return the average
+    prot:prot:prot = stoic:stoic:stoic
+    """
+    toret = {}
+    for prot in stoi_dict.keys():
+        toret[prot] = str(st.mean(stoi_dict[prot]))
+    p, s = zip(*toret.items())
+    k = [list(x) for x in zip(*sorted(zip(p, s), key=lambda pair: pair[0]))]
+    return "\t".join([":".join(k[0]), ":".join(k[1])])
+
+
+def stoichiometry(cmplx, sel):
+    """
+    receive a protein complex and list of peaks and calculate stoichiometry
+    i.e ratio of peak and then rank it lowest to highest
+    receive single HoA and sel peaks per protein for condition
+    calculate max of sel peaks
+    """
+    # get values for each peak
+    mx = {k: cmplx[k][v] for k, v in sel.items()}
+    # now which protein has the max value in the sel peak
+    protmax = max(mx, key=mx.get)
+    # TODO this can trigger ZeroDivision error
+    try:
+        ratios = {k: cmplx[k][sel[protmax]] / mx[protmax] for k in sel}
+        ratios = {k: ratios[k] for k in ratios if ratios[k] != 0}
+        prot, ratio = zip(*ratios.items())
+        ratio2 = [round(x / min(ratio), 2) for x in ratio]
+        return dict(zip(prot, ratio2))
+    except Exception as e:
+        return dict(zip(sel.keys(), [1]*len(sel.keys())))
+
+
+def reformat_cmplx_hoh(cmplx):
+    """
+    get a complex has HoH and split it
+    """
+    stoi = []
+    for cond in cmplx:
+        tmp_stoi = io.makehashlist()
+        tmp_prot_nr = []
+        for repl in cmplx[cond]:
+            pks = {k: cmplx[cond][repl][k]['I'] for k in cmplx[cond][repl]}
+            pks2 = io.makehashlist()
+            for k in pks:
+                pks2[k].extend([float(x) for x in pks[k].split('#')])
+            sel = {k: cmplx[cond][repl][k]['C'] for k in cmplx[cond][repl]}
+            sel = {k: int(float(v)) for k, v in sel.items()}
+            tmp_prot_nr.append(len(sel.keys()))
+            dummy = stoichiometry(pks2, sel)
+            for pr in dummy.keys():
+                tmp_stoi[pr].extend([dummy[pr]])
+        mb = round(st.mean(tmp_prot_nr))
+        row = "\t".join([cond, average_stoichiometry(tmp_stoi), str(mb)])
+        stoi.append(row)
+    return stoi
+
+
+def calc_stoic(path, tmp_fold):
+    """
+    read data in and prepare cmplx array
+    """
+    header = []
+    cmplx_stoi = io.makedeephash()
+    temp = {}
+    for line in open(path, 'r'):
+        line = line.rstrip('\n')
+        if line.startswith(str('ID') + '\t'):
+            header = re.split(r'\t+', line)
+        else:
+            things = re.split(r'\t+', line)
+            temp = dict(zip(header, things))
+        if temp:
+            pr_acc = temp['ID']
+            cond = temp['COND']
+            repl = temp['REPL']
+            cmplx_stoi[temp['CMPLX']][cond][repl][pr_acc]['I'] =temp['INT']
+            cmplx_stoi[temp['CMPLX']][cond][repl][pr_acc]['C']=temp['SEL']
+        else:
+            continue
+    tmp = []
+    for mp in cmplx_stoi:
+        tmp.extend([mp + "\t" + x for x in reformat_cmplx_hoh(cmplx_stoi[mp])])
+    header = ['CMPLX', 'COND','MB', 'RATIO', 'NR']
+    stoi_path = os.path.join(tmp_fold, "stoichiometry.txt")
+    io.create_file(stoi_path, header)
+    [io.dump_file(stoi_path, x) for x in tmp]
+
+
 def create_complex_report(infile, sto, sid, outfile="ComplexReport.txt"):
     def rescale_fr(x, fr):
         try:
@@ -600,10 +694,10 @@ def runner(infile, sample, outf, temp):
         os.makedirs(outf)
     ids = io.read_sample_ids_diff(sample)
     aligned_path = os.path.join(temp, "complex_align.txt")
-    not_aligned_path = os.path.join(temp, "complex_not_align.txt")
+    # not_aligned_path = os.path.join(temp, "complex_not_align.txt")
     # aligner.runner(infile, aligned_path, not_aligned=not_aligned_path)
-    # cmplx_dic, cmplx_pr, repl = read_cmplx_data(infile, tmp_fold=temp)
-
+    # calculate dummy stoichiometry
+    calc_stoic(path=infile,tmp_fold=temp)
     # create report if no differential
     sto = os.path.join(temp, "stoichiometry.txt")
     complex_report_out = os.path.join(outf, "ComplexReport.txt")
@@ -633,9 +727,9 @@ def runner(infile, sample, outf, temp):
 
     # rename columns for readbility
     nwnm = {
-        "PB4DEX": "Probability_differential_regulation",
-        "LGMLLHN": "Log_marginal_likelihood_null",
-        "LGMLLHA": "Log_marginal_likelihood_alternative",
+        "PB4DEX": "ProbabilityDifferentialRegulation",
+        "LGMLLHN": "Log_marginalLikelihoodNull",
+        "LGMLLHA": "Log_marginalLikelihoodAlternative",
     }
 
     # need to filter combined to contain only positively predicted complexes
@@ -660,5 +754,5 @@ def runner(infile, sample, outf, temp):
     allprot1.rename(columns=nwnm, inplace=True)
     allprot1.rename(columns={'ID': 'GeneName'}, inplace=True)
     allprot1.to_csv(
-        os.path.join(outf, "DifferentialProteinReport1.txt"), sep="\t", index=False
+        os.path.join(outf, "DifferentialProteinReport.txt"), sep="\t", index=False
     )
