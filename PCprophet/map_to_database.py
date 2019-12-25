@@ -15,6 +15,7 @@ def center_arr(hoa, fr_nr="all", norm=True, nat=True, stretch=(True, 72)):
         key = hoa[k]
         if fr_nr != "all":
             key = key[0:(fr_nr)]
+        # if less than 2 real values
         if len([x for x in key if x > 0]) < 2:
             continue
         key = preproc.gauss_filter(key, sigma=1, order=0)
@@ -59,6 +60,10 @@ def runner(infile, db, is_ppi, use_fr):
     """
     prot = io.read_txt(infile)
     print("mapping " + infile + " to " + db)
+    # write it for differential
+    prot_notnorm = center_arr(prot, stretch=(True,72), norm=False)
+
+    # perform normalization
     prot = center_arr(prot, fr_nr=use_fr, stretch=(True, 72))
     pr_df = io.create_df(prot)
     pr_df = pr_df.loc[~(pr_df == 0).all(axis=1)]
@@ -73,6 +78,11 @@ def runner(infile, db, is_ppi, use_fr):
     # write transf matrix
     dest = os.path.join(base, "transf_matrix.txt")
     pr_df.to_csv(dest, sep="\t", encoding="utf-8")
+
+    # write raw data
+    prot_notnorm_df = io.create_df(prot_notnorm)
+    prot_notnorm_df.index.name = "ID"
+    prot_notnorm_df.to_csv(os.path.join(base, "raw.txt"), sep="\t")
     if is_ppi == "True":
         # cluster the ppi db into a database
         rec_mcl(db)
