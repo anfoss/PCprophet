@@ -139,6 +139,11 @@ Input/
 Output/
 tmp/
 
+# ignore Rstuff
+
+.Rhistory
+Hela/*
+
 
 # ignore local files not in test/
 sample_ids.txt
