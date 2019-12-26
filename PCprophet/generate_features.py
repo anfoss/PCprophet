@@ -1,4 +1,3 @@
-_go
 import re
 import sys
 import os
