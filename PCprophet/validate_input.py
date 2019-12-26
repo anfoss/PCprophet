@@ -16,7 +16,7 @@ class InputTester(object):
         self.path = path
 
     def read_infile(self):
-        self.infile = pd.read_table(self.path, sep="\t", index_col=False)
+        self.infile = pd.read_csv(self.path, sep="\t", index_col=False)
 
     def test_missing_col(self, col):
         """

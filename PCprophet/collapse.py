@@ -44,6 +44,7 @@ class ProphetExperiment(object):
         self.peaks = pd.read_csv(peaks, sep='\t', index_col='MB', error_bad_lines=False)
         self.pred = pd.read_csv(pred, sep='\t', index_col='ID')
         self.prot_matrix = pd.read_csv(prot_matrix, sep='\t', index_col='ID')
+        #self.raw = pd.read_csv(raw_data, sep="\t", index_col='ID')
         self.annotation = pd.read_csv(annotation, sep='\t', index_col='ID')
         self.base = base
         self.condition = nm

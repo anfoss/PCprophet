@@ -3,6 +3,8 @@ from itertools import combinations
 import matplotlib.pyplot as plt
 import matplotlib
 from matplotlib.backends.backend_pdf import PdfPages
+import networkx as nx
+import igraph as ig
 
 #  matplotlib.use('Agg')
 import pandas as pd
@@ -11,117 +13,102 @@ import numpy as np
 
 import PCprophet.io_ as io
 import PCprophet.signal_prc as sig
+import PCprophet.stats_ as st
 
 
 def smart_makefold(path, folder):
     """
     """
-    plot_fold = os.path.join(path, folder)
-    if not os.path.isdir(plot_fold):
-        os.makedirs(plot_fold)
-    return plot_fold
+    pl_dir = os.path.join(path, folder)
+    if not os.path.isdir(pl_dir):
+        os.makedirs(pl_dir)
+    return pl_dir
 
 
-def plot_positive(out_fold, tmp_fold, sid):
+def plot_positive(comb, sid, pl_dir):
     """
-    loop through all positive in outfile and plots from transf matrix
+    plot all positive complexes
+    first rescale to original nr of fraction
+    then creates one folder for every crep and divide into positive and negative and inside positive there is novel
     """
-    repo = os.path.join(out_fold, "ComplexReport.txt")
-    comb = os.path.join(tmp_fold, "combined.txt")
+    def rescale_fract(row, sid):
+        ids, rep = row['COND'], row['REPL']
+        fr = sid[(sid['cond']==ids) & (sid['repl']==rep)]['fr'].values
+        return np.array(sig.resize_plot(row["INT"], input_fr=72, output_fr=fr))
+
+    def rescale_peak(row, sid):
+        ids, rep = row['COND'], row['REPL']
+        fr = sid[(sid['cond']==ids) & (sid['repl']==rep)]['fr'].values
+        # renormalize between peak picking rescaled to 0 fr-1 for highlight
+        return st.renormalize(row['SEL'], (0,71), (0, fr-1))
+
     sa_id = pd.read_csv(sid, sep="\t", index_col=False)
-    ids = dict(zip(sa_id["short_id"], sa_id["cond"]))
-    repo = pd.read_csv(repo, sep="\t", index_col=False)
     comb = pd.read_csv(comb, sep="\t", index_col=False)
-    fr2ids = dict(zip(sa_id["cond"], sa_id["fr"]))
-    # now we reconvert to original fractions
-    comb.drop(["PKS", "SEL", "P", "CMPLT", "GO"], axis=1, inplace=True)
-    xx = lambda row: np.array(sig.resize_plot(row["INT"], input_fr=72, output_fr=72))
-    comb["INT"] = comb.apply(xx, axis=1)
-    if "Treat1" in ids.values():
-        positive = set(repo[repo["Is Complex"] == "Positive"]["ComplexID"])
-        plot_sec_diff(comb, ids, positive, out_fold)
-    for index, row in repo.iterrows():
-        newf = row["Condition"] + " " + str(round(row["Replicate"], 1))
-        outf = os.path.join(out_fold, newf)
-        if not os.path.isdir(outf):
-            os.makedirs(outf)
-        mask = (
-            (comb["CMPLX"] == row["ComplexID"])
-            & (comb["COND"] == ids[row["Condition"]])
-            & (comb["REPL"] == row["Replicate"])
+    # remove columns with single protein ID
+    comb = comb[comb['ID'] != comb['CMPLX']]
+    # first need to make all the folders
+    crep = list(set(comb['CREP']))
+    crep = [os.path.join(pl_dir, x) for x in crep]
+    [os.mkdir(x) for x in crep if not os.path.isdir(x)]
+    comb['reINT'] = comb.apply(lambda row: rescale_fract(row, sa_id), axis=1)
+    comb['reSEL'] = comb.apply(lambda row: rescale_peak(row, sa_id), axis=1)
+    print('plotting complexes')
+    comb.groupby(['CMPLX', 'REPL', 'COND'], as_index=False).apply(lambda df: plot_profiles(df, pl_dir))
+
+
+def plot_profiles(filt, fold):
+    """
+    plot sec profiles and highlights average region of peak
+    """
+    csfont = {"fontname": "sans-serif"}
+    plt.rcParams["axes.facecolor"] = "white"
+    plt.rcParams["grid.color"] = "k"
+    plt.rcParams["grid.linestyle"] = ":"
+    plt.rcParams["grid.linewidth"] = 0.5
+    fig, ax = plt.subplots(figsize=(9, 9), facecolor="white")
+    ax.grid(color="grey", linestyle="--", linewidth=0.25, alpha=0.5)
+    fractions = [int(x) for x in range(1, len(filt['reINT'].iloc[0]) + 1)]
+    pk = np.median(filt['reSEL'].values)
+    for index, row in filt.iterrows():
+        plt.plot(
+            fractions, row['reINT'], "-", lw=1, label=str(row["ID"]),
         )
-        filt = comb[mask]
-        plot_fold = False
-        if row["Reported"] == "Reported" and row["Is Complex"] == "Positive":
-            plot_fold = smart_makefold(outf, "Positive reported")
-        elif row["Reported"] == "Novel" and row["Is Complex"] == "Positive":
-            plot_fold = smart_makefold(outf, "Positive novel")
-        elif row["Reported"] == "Reported" and row["Is Complex"] == "Negative":
-            plot_fold = smart_makefold(outf, "Negative reported")
-            # now we plot the row from comb
-        if plot_fold:
-            plot_general(
-                filt, "INT", plot_fold, row["ComplexID"], row["ComplexID"], False
-            )
-    return True
-
-
-def subset_ctrl_fill(df):
-    """
-    get a df and returns ctrl dataframe filled with all missing 0
-    """
-    prots = pd.concat([df["ID"], df["COND"], df["INT"]], axis=1)
-    prots.drop_duplicates(subset=["ID", "COND"], inplace=True)
-    allprot = set(df["ID"])
-    ctrl = prots[prots["COND"] == "Ctrl"]
-    missing = allprot - set(ctrl["ID"])
-    zeroes = [np.zeros(len(ctrl["INT"][0]))] * len(missing)
-    #  df.insert(0, 'Group', 'A')
-    # series = [pd.Series(mat[name][:, 1]) for name in Variables]
-    df = pd.DataFrame({"ID": list(missing), "INT": zeroes})
-    df.insert(0, "COND", "Ctrl")
-    ctrl = ctrl.append(df, ignore_index=True)
-    ctrl.set_index("ID")
-    # ctrl.drop('COND')
-    return ctrl
-
-
-def plot_sec_diff(comb, ids, positive, out_fold):
-    """
-    plot protein level differential subtract each protein to itself and plot
-    """
-    diff_fold = os.path.join(out_fold, "Differential Plot")
-    if not os.path.isdir(diff_fold):
-        os.makedirs(diff_fold)
-    groups = ["CMPLX", "COND", "ID"]
-    mm = (
-        comb.groupby(groups, as_index=False)
-        .INT.apply(lambda g: np.mean(g.values.tolist(), axis=0))
-        .reset_index()
+    plt.legend(
+        loc="best",
+        title="Subunits",
+        title_fontsize=16,
+        prop={"family": "sans-serif", "size": 9},
     )
-    newids = {v: k for k, v in ids.items()}
-    # prot only
-    ctrl = subset_ctrl_fill(mm)
-    ctrl.set_index("ID", inplace=True)
-    for sample in ids.values():
-        if sample == "Ctrl":
-            continue
-        sample_diff = os.path.join(diff_fold, newids[sample])
-        if not os.path.isdir(sample_diff):
-            os.makedirs(sample_diff)
-        filt = mm[mm["COND"] == sample]
-        # check here order if up or down when plot
-        pairs = [newids[x] for x in ["Ctrl", sample]]
-        for cmplx in set(filt["CMPLX"]):
-            # now we filt then subtract from prots
-            # so now should be only one prot row unique per line
-            # now we substract ctrl
-            filt_s = filt[(filt["CMPLX"] == cmplx)]
-            treat = filt_s.set_index("ID")
-            # TODO need to take care of uneven size here....
-            treat["INT"] = treat["INT"] - ctrl["INT"]
-            treat["ID"] = treat.index
-            plot_general(treat, "INT", sample_diff, cmplx, cmplx, pairs, True)
+    # now we highlight the region where the peak is
+    crep = next(iter(set(filt['CREP'])))
+    foldname = os.path.join(fold, crep)
+    if np.median(filt['P'].values > 0.5):
+        foldname = smart_makefold(foldname, 'Positive')
+        plt.axvspan(pk-3,pk+3, color='grey', alpha=0.2)
+    else:
+        foldname = smart_makefold(foldname, 'Negative')
+    plt.xlabel("Rescaled fraction (arb. unit)", fontsize=9, **csfont)
+    plt.ylabel("Rescaled intensity", fontsize=9, **csfont)
+
+    # now we take care of name loc and so on
+    nm = filt['CMPLX'].values[0]
+    ids = nm
+    title = ax.set_title("\n".join(nm.split("#")), fontsize=12, **csfont)
+    # take first element without creating a new list
+    if "/" in ids:
+        ids = ids.replace("/", " ")
+
+    plotname = os.path.join(str(foldname) + "/%s.pdf" % str(ids))
+    try:
+        fig.savefig(plotname, dpi=800, bbox_inches = "tight")
+    except OSError as exc:
+        if exc.errno == 63:
+            ids = ids.split("#")[0]
+            plotname = os.path.join(str(foldname) + "/%s.pdf" % str(ids))
+            fig.savefig(plotname, dpi=800, bbox_inches = "tight")
+        else:
+            raise exc
+    plt.close()
 
 
 def plot_general(filt, yaxis, fold, ids, nm, pairs, hline=False):
@@ -130,7 +117,7 @@ def plot_general(filt, yaxis, fold, ids, nm, pairs, hline=False):
     plt.rcParams["grid.color"] = "k"
     plt.rcParams["grid.linestyle"] = ":"
     plt.rcParams["grid.linewidth"] = 0.5
-    fig, ax = plt.subplots(figsize=(12, 9), facecolor="white")
+    fig, ax = plt.subplots(figsize=(9, 9), facecolor="white")
     ax.grid(color="grey", linestyle="--", linewidth=0.25, alpha=0.5)
     fractions = [int(x) for x in range(1, len(filt[yaxis].iloc[0]) + 1)]
     for index, row in filt.iterrows():
@@ -141,70 +128,100 @@ def plot_general(filt, yaxis, fold, ids, nm, pairs, hline=False):
         loc="best",
         title="Subunits",
         title_fontsize=16,
-        prop={"family": "sans-serif", "size": 16},
+        prop={"family": "sans-serif", "size": 12},
     )
     plt.xlabel("Rescaled fraction (arb. unit)", fontsize=14, **csfont)
     title = ax.set_title("\n".join(nm.split("#")), fontsize=18, **csfont)
-    if hline:
-        ax.set_ylim(-1.0, 1.0)
-        plt.ylabel("Delta rescaled intensity", fontsize=14, **csfont)
-        ax.axhline(0, color="black")
-        ax2 = ax.twinx()
-        ax2.set_ylim(ax.get_ylim())
-        ax2.set_yticks([-1, 1])
-        ax2.set_yticklabels(pairs, fontsize=14)
-    else:
-        plt.ylabel("Rescaled intensity", fontsize=14, **csfont)
+    ax.set_ylim(-1.0, 1.0)
+    plt.ylabel("Delta rescaled intensity", fontsize=14, **csfont)
+    ax.axhline(0, color="black")
+    ax2 = ax.twinx()
+    ax2.set_ylim(ax.get_ylim())
+    ax2.set_yticks([-1, 1])
+    ax2.set_yticklabels(pairs, fontsize=14)
     if "/" in ids:
         ids = ids.replace("/", " ")
     plotname = os.path.join(str(fold) + "/%s.pdf" % str(ids))
     try:
-        fig.savefig(plotname, dpi=600)
+        fig.savefig(plotname, dpi=800, bbox_inches = "tight")
     except OSError as exc:
         if exc.errno == 63:
             ids = ids.split("#")[0]
             plotname = os.path.join(str(fold) + "/%s.pdf" % str(ids))
-            fig.savefig(plotname, dpi=600)
+            fig.savefig(plotname, dpi=800, bbox_inches = "tight")
         else:
             raise
     plt.close()
 
 
-def plot_alignment(not_ali, ali, peaks, fold, labelrow, plottype):
-    csfont = {"fontname": "sans-serif"}
-    plt.rcParams["axes.facecolor"] = "white"
-    plt.rcParams["grid.color"] = "k"
-    plt.rcParams["grid.linestyle"] = ":"
-    plt.rcParams["grid.linewidth"] = 0.5
-    fig, (ax1, ax2) = plt.subplots(figsize=(6, 6), facecolor="white", nrows=2)
-    not_ali["INT"] = not_ali["no_al"]
-    for k in ([ax1, not_ali], [ax2, ali]):
-        # select in peaks
-        k[0].grid(color="grey", linestyle="--", linewidth=0.25, alpha=0.5)
-        fractions = [int(x) for x in range(1, len(k[1]["INT"].iloc[0]) + 1)]
-        for index, row in k[1].iterrows():
-            tmp_pks = peaks[peaks["COND"] == row[labelrow]]
-            y = [row["INT"][int(x)] for x in tmp_pks["SEL"]]
-            x_sort, y_sort = zip(*sorted(zip(tmp_pks["SEL"], y)))
-            k[0].plot(x_sort, y_sort, "-", label=str(row[labelrow]))
-        plt.legend(
-            loc="best",
-            title="Conditions",
-            title_fontsize=16,
-            prop={"family": "sans-serif", "size": 16},
-        )
-    ax1.set_ylabel("Pre alignement", fontsize=14, **csfont)
-    ax2.set_ylabel("Post alignement", fontsize=14, **csfont)
-    ax2.set_xlabel("Fraction (arb. unit)", fontsize=14, **csfont)
-    ax1.yaxis.set_label_coords(-0.1, 0.5)
-    ax2.yaxis.set_label_coords(-0.1, 0.5)
-    plt.setp(ax1.get_xticklabels(), visible=False)
-    plotname = os.path.join(fold, "%sAlignement.pdf" % str(plottype))
-    fig.savefig(plotname, dpi=600)
-    plt.close()
+def plot_network(outf, ppi = '/PPIReport.txt'):
+    """
+    plot network
+    """
+    def filter_report(df):
+        """
+        take a df with ppi, sort by reported and not
+        and keep the first one (i.e reported)
+        in case that is present
+        """
+        df = df.sort_values(by='Reported', ascending=True)
+        df.drop_duplicates(subset=['ProteinA', 'ProteinB', 'Replicate', 'Condition'],keep='last', inplace=True)
+        return df
+    df = pd.read_csv(os.path.join(outf, ppi), sep="\t")
+    df = df.sort_values(by='Reported', ascending=True)
+    df.drop_duplicates(subset=['ProteinA', 'ProteinB', 'Replicate', 'Condition'],keep='last', inplace=True)
+    df = filter_report(df)
+    counts = df.groupby(['ProteinA', 'ProteinB']).size().reset_index()
+    df = pd.merge(df, counts, on=['ProteinA', 'ProteinB'])
+
+    # now drop duplicates per replicate
+    df.drop_duplicates(subset=['ProteinA', 'ProteinB'],keep='first', inplace=True)
+
+    # need to drop the duplicates
+    df_gr = nx.Graph()
+    df_gr.add_edges_from(zip(df['ProteinA'], df['ProteinB']))
+    probs = None
+    try:
+        probs = pd.read_csv('DifferentialProteinReport.txt', sep="\t")
+        probs = dict(zip(probs['Gene name'], probs['ProbabilityDifferentialRegulation']))
+    except FileNotFoundError as e:
+        pass
+    if probs:
+        probs = [probs.get(x,0) for x in df_gr.nodes]
+        # now rescale from 1 to 8
+        probs = [st.renormalize(x, (0,1), (2, 6)) for x in probs]
+    else:
+        probs = [4] * len(df_gr.nodes)
+    nx.write_graphml(df_gr, 'ppi_network.GraphML')
+    df_gr = ig.Graph.Read_GraphML('ppi_network.GraphML')
+
+    # calculate network stats
+    community = df_gr.community_multilevel()
+    comm = max(community.membership)
+    # initialize color palette
+    cols = ig.ClusterColoringPalette(comm+1)
+    clr = [cols.get(x) for x in community.membership]
+
+    # create edge color
+    cl_dict = {'Reported' : 'grey80', 'Novel': 'grey20'}
+    clr2 = [cl_dict[x] for x in df['Reported']]
 
 
-# @io.timeit
+    layout = df_gr.layout('fr')
+    # https://igraph.org/python/doc/tutorial/tutorial.html
+    outname = os.path.join(outf, 'combined_network.pdf')
+    ig.plot(df_gr,
+            outname,
+            layout=layout,
+            vertex_size=probs,
+            edge_width=1,
+            edge_color = clr2,
+            vertex_color= clr,
+            vertex_frame_color=clr,
+            keep_aspect_ratio=False
+            )
+
+
 def plot_fdr(tmp_fold, out_fold, target_fdr=0.5):
     """
     plot fdr
@@ -223,7 +240,8 @@ def plot_fdr(tmp_fold, out_fold, target_fdr=0.5):
         ids = os.path.basename(os.path.normpath(sample))
         x_sort, y_sort = zip(*sorted(zip(fdrfile["sumGO"], fdrfile["fdr"])))
         plt.plot(x_sort, y_sort, label=ids, linewidth=1.5, linestyle="-")
-    plt.legend(loc="best", prop={"family": "sans-serif", "size": 16})
+    # plt.legend(loc="best", )
+    # let's assume ids is in triplicate all times
     plt.xlabel("GO score", fontsize=14, **csfont)
     plt.ylabel("False Discovery Rate", fontsize=14, **csfont)
     plt.axhline(y=float(target_fdr), linestyle="--", color="black")
@@ -233,28 +251,13 @@ def plot_fdr(tmp_fold, out_fold, target_fdr=0.5):
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)
     ax.tick_params(axis='both', which='both', length=0)
-    fig.savefig(os.path.join(out_fold, "FalseDiscoveryRate.pdf"), dpi=600)
+    box = ax.get_position()
+    ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+    # Put a legend to the right of the current axis
+    plt.legend(loc='center left', bbox_to_anchor=(1, 0.5), prop={"family": "sans-serif", "size": 12})
+    fig.savefig(os.path.join(out_fold, "FalseDiscoveryRate.pdf"), dpi=800, bbox_inches = "tight")
     plt.close()
     return True
-
-
-def mean_subs(g):
-    return np.mean(g.values.tolist(), axis=0)
-
-
-def conv2float(row):
-    row["INT"] = [float(x) for x in row["INT"]]
-    row["no_al"] = [float(x) for x in row["no_al"]]
-    return row
-
-
-def chained_mean_groupby(df, what, group1, group2):
-    """
-    calculate mean once by groupby with group1 then with group2
-    """
-    df = df.groupby(group1, as_index=True)[what].apply(mean_subs).reset_index()
-    df = df.groupby(group2, as_index=True)[what].apply(mean_subs).reset_index()
-    return df
 
 
 def plot_recall(out_fold):
@@ -301,58 +304,10 @@ def plot_recall(out_fold):
     # Add a legend
     handles, labels = ax.get_legend_handles_labels()
     ax.legend(handles[:2], labels[:2], loc="upper left")
-    fig.savefig(os.path.join(out_fold, "RecallDatabase.pdf"), dpi=800)
+    fig.savefig(os.path.join(out_fold, "RecallDatabase.pdf"), dpi=800, bbox_inches = "tight")
     plt.close()
     return True
 
-
-def plot_recalibration(tmp_fold, out_fold):
-    """
-    plot average profile of complexes used in aligner
-    """
-    toread = os.path.join(tmp_fold, "complex_align.txt")
-    try:
-        common = set(pd.read_csv(toread, sep="\t", index_col=False)["CMPLX"])
-    except FileNotFoundError as e:
-        return True
-    toread = os.path.join(tmp_fold, "combined.txt")
-    comb = pd.read_csv(toread, sep="\t", index_col=False)
-    comb = comb[comb["CMPLX"].isin(common)]
-    comb["INT"] = comb["INT"].str.split("#", expand=False)
-    comb["no_al"] = comb["no_al"].str.split("#", expand=False)
-    comb = comb.apply(conv2float, axis=1)
-    # this basically takes care of multiple replicates
-    groups = ["CMPLX", "COND", "REPL", "ID"]
-    # replicates plot
-    aligned = chained_mean_groupby(comb, "INT", groups, ["COND", "REPL"])
-    not_aligned = chained_mean_groupby(comb, "no_al", groups, ["COND", "REPL"])
-    # now we add the peaks
-    peaks = chained_mean_groupby(comb, "SEL", groups, ["COND", "CMPLX"])
-    peaks["SEL"] = peaks.SEL.round()
-    plot_alignment(not_aligned, aligned, peaks, out_fold, "COND", "Condition")
-
-
-def plot_baysean(probs_prot_d, probs_prot_zmn, probs_cplx_d, probs_cplx_fl, out_fold):
-    myfig=plt.figure()
-
-    plt.clf()
-    plt.subplots_adjust(hspace=0.4)
-    plt.subplot(211)
-    plt.ylabel("P(I=1|D)", fontsize="10")
-    plt.title("Differentially regulated proteins",
-              x=.5, y=1.1, fontsize="15")
-    plt.plot(probs_prot_d, "r-", linewidth=3)
-    plt.plot(probs_prot_zmn, "g-", linewidth=3)
-
-    plt.subplot(212)
-    plt.title("Differentially regulated protein complexes",
-              x=.5, y=1.1, fontsize="15")
-    plt.plot(probs_cplx_d, "r-", linewidth=3)
-    plt.plot(probs_cplx_fl, "g-", linewidth=3)
-    plt.ylabel("P(I=1|D)", fontsize="10")
-
-    with PdfPages(os.path.join(out_fold, "DifferentialRegulation.pdf")) as pdf:
-        pdf.savefig(myfig)
 
 def runner(tmp_fold, out_fold, target_fdr, sid):
     """
@@ -365,10 +320,13 @@ def runner(tmp_fold, out_fold, target_fdr, sid):
     5) negative Reported
     6) Apex plot => positive negative across the entire sec
     """
+    outf = os.path.join(out_fold, 'Plots')
+    if not os.path.isdir(outf):
+        os.makedirs(outf)
     plot_fdr(tmp_fold, out_fold, target_fdr)
     plot_recall(out_fold)
-    plot_recalibration(tmp_fold, out_fold)
-    assert False
-    # now fails
-    plot_positive(out_fold, tmp_fold, sid)
+    comb = os.path.join(tmp_fold, 'combined.txt')
+    plot_positive(comb, sid, pl_dir=outf)
+    # this at the end because it could fail
+    plot_network(out_fold, 'PPIreport.txt')
     #  plot_differential(out_fold, tmp_fold, sid)
