@@ -206,7 +206,7 @@ def scr(G, gaf, id1, id2, go_type):
     t2 = parse_go(id2, gaf, go_type)
     if t1 and t2:
         x = [(wang(G, x[0], x[1])) for x in list(itertools.product(t1, t2))]
-        return sum(x) / len(x)
+        return st.mean(x)
     else:
         return 0
 
@@ -220,11 +220,8 @@ def combine_all(G, gaf, t, filename, repo):
     out = []
     for go in go_type:
         sumf = []
-        for x in list(st.fast_comb(t, 2)):
-            k = scr(G, gaf, x[0], x[1], go)
-            sumf.append(k)
-            io.dump_file(filename, "{}\t{}\t{}\t{}".format(x[0], x[1], k, repo))
-        out.append(sum(sumf) / len(sumf))
+        k = [scr(G, gaf, x[0], x[1], go) for x in list(st.fast_comb(t, 2))]
+        out.append(st.mean(out))
     out.append(sum(out))
     return "\t".join([str(x) for x in out])
 

@@ -1,3 +1,4 @@
+_go
 import re
 import sys
 import os
@@ -324,12 +325,12 @@ def format_hash(temp):
 
 
 # @io.timeit
-def gen_feat(cmplx, goobj, gaf, go_ppi):
+def gen_feat(cmplx, goobj, gaf):
     """
     receive a single row and generate feature calc
     """
     if cmplx.test_complex() and cmplx.align_peaks():
-        cmplx.calc_go_score(goobj, gaf, go_ppi)
+        cmplx.calc_go_score(goobj, gaf)
         cmplx.calc_width()
         cmplx.pairwise()
         return cmplx.create_row(), cmplx.get_peaks()
@@ -379,12 +380,9 @@ def runner(base, go_obo, tsp_go):
     gaf = go.read_gaf_out(io.resource_path(tsp_go))
     # get tmp/filename folder
     cmplx_comb = os.path.join(base, "cmplx_combined.txt")
-    # now we open PPI file
-    ppi_go = os.path.join(base, "ppi_go.txt")
-    io.create_file(ppi_go, ['protA', 'protB', 'GO', 'ANN'])
     # print(os.path.dirname(os.path.realpath(__file__)))
     wr, pks = mp_cmplx(filename=cmplx_comb, goobj=go_tree,
-                       gaf=gaf, go_ppi=ppi_go)
+                       gaf=gaf)
     feature_path = os.path.join(base, "mp_feat_norm.txt")
     feat_header = [
         "ID",
