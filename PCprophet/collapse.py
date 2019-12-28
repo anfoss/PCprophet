@@ -323,7 +323,10 @@ class MultiExperiment(object):
                 pass
             finally:
                 count += 1
-        self.all_hypo = pd.concat(tosub, axis=0)
+        if tosub:
+            self.all_hypo = pd.concat(tosub, axis=0)
+        else:
+            self.allhypo = pd.DataFrame()
 
     def simil_graph_weight(self, hypo, names):
         '''

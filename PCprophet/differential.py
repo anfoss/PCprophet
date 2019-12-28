@@ -704,6 +704,10 @@ def runner(infile, sample, outf, temp):
     create_complex_report(infile, sto, sample, outfile=complex_report_out)
     ppi_report_out = os.path.join(outf, "PPIReport.txt")
     create_ppi_report(infile=complex_report_out, outfile=ppi_report_out)
+
+    # differential analysis only if multiple condition
+    if len(list(ids.keys())) == 1:
+        return None
     combined, vals = extract_inte(
                                   pd.read_csv(infile, sep="\t"),
                                   # q=20, # def 20
