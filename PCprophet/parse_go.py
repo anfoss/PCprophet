@@ -219,24 +219,11 @@ def combine_all(G, gaf, t):
     go_type = ["CC", "MF", "BP"]
     out = []
     for go in go_type:
-        sumf = []
         k = [scr(G, gaf, x[0], x[1], go) for x in list(st.fast_comb(t, 2))]
-        out.append(st.mean(out))
-    out.append(sum(out))
-    return "\t".join([str(x) for x in out])
-
-
-# if we can make this one
-def combine_all2(G, gaf, t):
-    """
-    permute all of blocks of whatever
-    """
-    go_type = ["CC", "MF", "BP"]
-    out = []
-    for go in go_type:
-        x = [scr(G, gaf, x[0], x[1], go) for x in list(st.fast_comb(t, 2))]
-        out.append(sum(x) / len(x))
-    out.append(sum(out))
+        out.append(st.mean(k))
+    # add to out the mean of the three Ontologies
+    # TODO check mean or sum
+    out.append(st.mean(out))
     return "\t".join([str(x) for x in out])
 
 
