@@ -740,7 +740,7 @@ def runner(infile, sample, outf, temp):
     allcmplx = allcmplx[~allcmplx['ID'].isin(allprot1['ID'])]
     # this will duplicate the entry
     allcmplx = pd.merge(complex_report_out, allcmplx, left_on=['ComplexID', 'Condition'], right_on=['ID', 'Condition'])
-    allcmplx.drop_duplicates(subset=['Condition', 'Replicate', 'ComplexID'],
+    allcmplx.drop_duplicates(subset=['Condition', 'ComplexID'],
                              keep='first',
                              inplace=True
                              )
