@@ -205,7 +205,6 @@ class ComplexProfile(object):
             str(self.width),
             self.score,
         ]
-        print(self.score)
         return "\t".join([str(x) for x in row])
 
 
