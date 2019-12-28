@@ -738,7 +738,12 @@ def runner(infile, sample, outf, temp):
 
     # remove single prot accession i.e single
     allcmplx = allcmplx[~allcmplx['ID'].isin(allprot1['ID'])]
-    allcmplx = pd.merge(complex_report_out, allcmplx, left_on='ComplexID', right_on='ID')
+    # this will duplicate the entry
+    allcmplx = pd.merge(complex_report_out, allcmplx, left_on=['ComplexID', 'Condition'], right_on=['ID', 'Condition'])
+    allcmplx.drop_duplicates(subset=['Condition', 'Replicate', 'ComplexID'],
+                             keep='first',
+                             inplace=True
+                             )
     # filt_rep = lambda df: all(df['Is Complex'] == 'Negative')
     # print(allcmplx.shape)
     # allcmplx['n']=(allcmplx.groupby('ComplexID').apply(filt_rep).reset_index())
