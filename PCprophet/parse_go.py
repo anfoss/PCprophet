@@ -212,7 +212,7 @@ def scr(G, gaf, id1, id2, go_type):
 
 
 # if we can make this one
-def combine_all(G, gaf, t, filename, repo):
+def combine_all(G, gaf, t):
     """
     permute all of blocks of whatever
     """

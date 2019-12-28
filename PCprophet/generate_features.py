@@ -45,7 +45,7 @@ class ComplexProfile(object):
     formed by a list of ProteinProfile
     """
 
-    def __init__(self, name, rep):
+    def __init__(self, name):
         super(ComplexProfile, self).__init__()
         self.name = name
         self.goscore = 0
@@ -57,7 +57,6 @@ class ComplexProfile(object):
         self.cor = []
         self.diff = []
         self.pks_ali = []
-        self.repo = rep
 
     def test_complex(self):
         if len(self.members) < 2 or len(self.members) > 100:
@@ -88,12 +87,10 @@ class ComplexProfile(object):
         for k in self.pks.keys():
             yield "{}\t{}\t{}".format(k, self.get_name(), self.pks[k])
 
-    def calc_go_score(self, goobj, gaf, go_ppi):
+    def calc_go_score(self, goobj, gaf):
         self.score = go.combine_all(goobj,
                                      gaf,
                                      np.array(self.get_members()),
-                                     go_ppi,
-                                     self.repo
                                      )
 
     def format_ids(self):
@@ -312,7 +309,7 @@ def format_hash(temp):
     """
     inten = temp["FT"].split("#")
     members = temp["MB"].split("#")
-    tmp = ComplexProfile(temp["ID"], temp['ANN'])
+    tmp = ComplexProfile(temp["ID"])
     for idx, acc in enumerate(members):
         if acc in tmp.get_members():
             continue
@@ -323,7 +320,6 @@ def format_hash(temp):
     return tmp
 
 
-# @io.timeit
 def gen_feat(cmplx, goobj, gaf):
     """
     receive a single row and generate feature calc
@@ -338,7 +334,7 @@ def gen_feat(cmplx, goobj, gaf):
 
 
 # wrapper
-def mp_cmplx(filename, goobj, gaf, go_ppi):
+def mp_cmplx(filename, goobj, gaf):
     """
     map complex into 3 vector => cor vectors
     shift peak
@@ -363,7 +359,7 @@ def mp_cmplx(filename, goobj, gaf, go_ppi):
             temp = dict(zip(header, things))
         if temp:
             cmplx = format_hash(temp)
-            feat_row, peaks = gen_feat(cmplx, goobj, gaf, go_ppi)
+            feat_row, peaks = gen_feat(cmplx, goobj, gaf)
             if feat_row and peaks:
                 feat_file.append(feat_row)
                 [peaks_file.append(x) for x in list(peaks)]
