@@ -22,12 +22,13 @@ class ProphetExperiment(object):
     container for a single PCprophet experiment
     merge all tmp files for a single sec experiment into a complex centric file
     performs fdr calculation
+    collapse complexes according to '-co' argument in main.py
 
     Args:
       feature: mp_feat_norm.txt
       peaks: list of peaks and selected peak per complex
       pred: prediction from predict.py
-      prot_matrix: normalized smoothed rescaled protein matrix
+      prot_matrix: resampled protein matrix <- not rescaled
       annotation: name
       base: path
       mw: mw from uniprot
@@ -37,14 +38,14 @@ class ProphetExperiment(object):
       NotImplementedError: If no method for perfoming collapsing is not correct
     '''
     def __init__(
-        self, feature, peaks, pred, prot_matrix, annotation, base, nm, mw=None, cal=None
+        self, feature, peaks, pred, prot_matrix, raw, annotation, base, nm, mw=None, cal=None
     ):
         super(ProphetExperiment, self).__init__()
         self.feature = pd.read_csv(feature, sep='\t', index_col='ID')
         self.peaks = pd.read_csv(peaks, sep='\t', index_col='MB', error_bad_lines=False)
         self.pred = pd.read_csv(pred, sep='\t', index_col='ID')
         self.prot_matrix = pd.read_csv(prot_matrix, sep='\t', index_col='ID')
-        #self.raw = pd.read_csv(raw_data, sep="\t", index_col='ID')
+        self.raw = pd.read_csv(raw, sep="\t", index_col='ID')
         self.annotation = pd.read_csv(annotation, sep='\t', index_col='ID')
         self.base = base
         self.condition = nm
@@ -69,16 +70,22 @@ class ProphetExperiment(object):
 
     def peaks_inte_combine(self):
         '''
-        combine together peaks and intensity
+        combine together peaks, intensity and prot_matrix
         prot A peaks detected peaks sel cmplx intensity
         '''
         # we need to merge the protein matrix into a single column
         joinall = lambda x: '#'.join(x.dropna().astype(str))
         prote = self.prot_matrix.apply(joinall, axis=1)
+        raws = self.raw.apply(joinall, axis=1)
         self.peaks_c = pd.merge(
             self.peaks, prote.to_frame(), how='inner', left_index=True, right_index=True
         )
         self.peaks_c.rename(columns={0: 'INT'}, inplace=True)
+        # now add the raw intensity
+        self.peaks_c = pd.merge(
+            self.peaks_c, raws.to_frame(), how='inner', left_index=True, right_index=True
+        )
+        self.peaks_c.rename(columns={0: 'RAWINT'}, inplace=True)
         self.peaks_c['CREP'] = self.condition
         return self.peaks_c
 
@@ -262,15 +269,17 @@ class ProphetExperiment(object):
         for removal use P != -1
         we add the index of max arr as peak
         '''
-        df = pd.DataFrame(columns=cols, index=self.prot_matrix.index)
-        df['ID'] = self.prot_matrix.index
+        df = pd.DataFrame(columns=cols, index=self.raw.index)
+        df['ID'] = self.raw.index
         mrg = lambda x: reduce(lambda a, b: str(a)+'#'+ str(b), x)
-        df['INT'] = self.prot_matrix.apply(mrg, axis=1)
+        df['RAWINT'] = self.raw.apply(mrg, axis=1)
         df['CMPLX'] = df['ID']
         df['P'] = -1
+        # important to leave this one null ?
+        df['INT'] = -1
         df['CREP'] = self.condition
         df[['COND', 'REPL']] = df.CREP.str.split('_', expand=True)
-        df['SEL'] = self.prot_matrix.apply(lambda x: np.argmax(x), axis=1)
+        df['SEL'] = self.raw.apply(lambda x: np.argmax(x), axis=1)
         df[['PKS', 'CMPLT', 'GO']] = 0
         return df
 
@@ -279,7 +288,8 @@ class MultiExperiment(object):
     '''
     docstring for MultiExperiment
     collapse multiple PCProphetExperiments into a single 'combined.txt'
-    file
+
+
     '''
 
     def __init__(self):
@@ -319,7 +329,7 @@ class MultiExperiment(object):
                 tmp['ID'] = 'cmplx__' + str(count)
                 tosub.append(tmp)
             except KeyError as e:
-                # remove inplace easier to catch than test has_node
+                # remove inplace faster to catch than test has_node
                 pass
             finally:
                 count += 1
@@ -368,7 +378,7 @@ class MultiExperiment(object):
         '''
         self.complex_c_all['MB'] = self.complex_c_all['MB'].str.split('#')
         self.protein_c = io.explode(df=self.complex_c_all, lst_cols=['MB'])
-        # nm holds the old name before multi_collapse
+        # nm holds the old cmplx name before multi_collapse
         old2new_id = dict(zip(self.protein_c['nm'], self.protein_c['ID']))
         old2new_id = {k.split('$')[0]: v for k, v in old2new_id.items()}
         self.protein_c.drop(
@@ -408,6 +418,7 @@ class MultiExperiment(object):
             'CMPLT',
             'GO',
             'CREP',
+            'RAWINT'
         ]
         # now add all single protein accession from each matrix if not present
         self.protein_c = self.protein_c[order]
@@ -472,13 +483,16 @@ def runner(tmp_, ids, cal, mw, fdr, mode):
         mp_feat_norm = os.path.join(smpl, 'mp_feat_norm.txt')
         pred_out = os.path.join(smpl, 'rf.txt')
         ann = os.path.join(smpl, 'cmplx_combined.txt')
+        # NB this needed for stoichiometry estimation
         prot = os.path.join(smpl, 'transf_matrix.txt')
+        raw = os.path.join(smpl, 'raw.txt')
         peak = os.path.join(smpl, 'peak_list.txt')
         exp = ProphetExperiment(
             feature=mp_feat_norm,
             peaks=peak,
             pred=pred_out,
             prot_matrix=prot,
+            raw = raw,
             annotation=ann,
             base=smpl,
             nm=exp_info[base],

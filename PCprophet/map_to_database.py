@@ -9,7 +9,7 @@ import PCprophet.signal_prc as preproc
 
 
 # standardize and center methods
-def center_arr(hoa, fr_nr="all", norm=True, nat=True, stretch=(True, 72)):
+def center_arr(hoa, fr_nr="all", smooth=True, stretch=(True, 72)):
     norm = {}
     for k in hoa:
         key = hoa[k]
@@ -18,7 +18,8 @@ def center_arr(hoa, fr_nr="all", norm=True, nat=True, stretch=(True, 72)):
         # if less than 2 real values
         if len([x for x in key if x > 0]) < 2:
             continue
-        key = preproc.gauss_filter(key, sigma=1, order=0)
+        if smooth:
+            key = preproc.gauss_filter(key, sigma=1, order=0)
         key = preproc.impute_namean(key)
         if stretch[0]:
             # input original length wanted length
@@ -51,7 +52,6 @@ def optimize_mcl(matrix, results, clusters):
             infl = inflation
     return infl
 
-
 def runner(infile, db, is_ppi, use_fr):
     """
     argv[1] = input name conv2gn out
@@ -60,8 +60,8 @@ def runner(infile, db, is_ppi, use_fr):
     """
     prot = io.read_txt(infile)
     print("mapping " + infile + " to " + db)
-    # write it for differential
-    prot_notnorm = center_arr(prot, stretch=(True,72), norm=False)
+    # write it for differential stretch it to assert same length
+    prot_notnorm = center_arr(prot, stretch=(True, 72), smooth=False)
 
     # perform normalization
     prot = center_arr(prot, fr_nr=use_fr, stretch=(True, 72))

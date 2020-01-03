@@ -446,7 +446,7 @@ def extract_local_peak(row, q=12, norm=False):
     """
     # move from fraction to index
     pk = int(row['SEL']-1)
-    tmp =  row['INT'].split('#')
+    tmp =  row['RAWINT'].split('#')
     if norm:
         tmp = sta.zscore(tmp, axis=1, ddof=1)
         tmp = [x/sum(tmp) for x in tmp]
@@ -505,7 +505,6 @@ def stoichiometry(cmplx, sel):
     mx = {k: cmplx[k][v] for k, v in sel.items()}
     # now which protein has the max value in the sel peak
     protmax = max(mx, key=mx.get)
-    # TODO this can trigger ZeroDivision error
     try:
         ratios = {k: cmplx[k][sel[protmax]] / mx[protmax] for k in sel}
         ratios = {k: ratios[k] for k in ratios if ratios[k] != 0}
@@ -555,7 +554,7 @@ def calc_stoic(path, tmp_fold):
         else:
             things = re.split(r'\t+', line)
             temp = dict(zip(header, things))
-        if temp:
+        if temp and float(temp['P']) > 0:
             pr_acc = temp['ID']
             cond = temp['COND']
             repl = temp['REPL']
@@ -710,11 +709,11 @@ def runner(infile, sample, outf, temp):
         return None
     combined, vals = extract_inte(
                                   pd.read_csv(infile, sep="\t"),
-                                  # q=20, # def 20
+                                  # q=20, # def 72
                                   norm=False # def true
                                   )
-    combined_full, vals_f = extract_inte(pd.read_csv(infile, sep="\t"))
     allprot1, allcmplx = [], []
+    print('performing differential analysis')
     for cnd in ids.keys():
         if cnd != "Ctrl":
             tmp = combined[combined["COND"].isin(["Ctrl", cnd])]
@@ -748,6 +747,7 @@ def runner(infile, sample, outf, temp):
                              keep='first',
                              inplace=True
                              )
+    # need to do select only positive complexes
     # filt_rep = lambda df: all(df['Is Complex'] == 'Negative')
     # print(allcmplx.shape)
     # allcmplx['n']=(allcmplx.groupby('ComplexID').apply(filt_rep).reset_index())
