@@ -479,6 +479,8 @@ def runner(tmp_, ids, cal, mw, fdr, mode):
     allexps = MultiExperiment()
     for smpl in dir_:
         base = os.path.basename(os.path.normpath(smpl))
+        if not exp_info.get(base, None):
+            continue
         print(base, exp_info[base])
         mp_feat_norm = os.path.join(smpl, 'mp_feat_norm.txt')
         pred_out = os.path.join(smpl, 'rf.txt')
