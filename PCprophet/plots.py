@@ -262,7 +262,7 @@ def plot_fdr(tmp_fold, out_fold, target_fdr=0.5):
 
 def plot_recall(out_fold):
     """
-    plot barplot recovery complexes
+    plot barplot recovery complexes for every condition
     """
     csfont = {"fontname": "sans-serif"}
     fig, ax = plt.subplots(figsize=(6, 6), facecolor="white")
@@ -323,8 +323,8 @@ def runner(tmp_fold, out_fold, target_fdr, sid):
     outf = os.path.join(out_fold, 'Plots')
     if not os.path.isdir(outf):
         os.makedirs(outf)
-    plot_fdr(tmp_fold, out_fold, target_fdr)
-    plot_recall(out_fold)
+    # plot_fdr(tmp_fold, out_fold, target_fdr)
+    # plot_recall(out_fold)
     comb = os.path.join(tmp_fold, 'combined.txt')
     plot_positive(comb, sid, pl_dir=outf)
     # this at the end because it could fail
