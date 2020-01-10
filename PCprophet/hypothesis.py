@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from scipy import cluster
 
-import PCprophet.signal_prc as preproc
+import PCprophet.stats_ as st
 import PCprophet.io_ as io
 
 
@@ -18,12 +18,12 @@ def center_arr(hoa, fr_nr="all", norm=True, nat=True, stretch=(True, 72)):
             key = key[0:(fr_nr)]
         if len([x for x in key if x > 0]) < 2:
             continue
-        key = preproc.gauss_filter(key, sigma=1, order=0)
-        key = preproc.impute_namean(key)
+        key = st.gauss_filter(key, sigma=1, order=0)
+        key = st.impute_namean(key)
         if stretch[0]:
             # input original length wanted length
-            key = preproc.resample(key, len(key), output_fr=stretch[1])
-        key = preproc.resize(key)
+            key = st.resample(key, len(key), output_fr=stretch[1])
+        key = st.resize(key)
         hypo[k] = list(key)
     return hypo
 
@@ -34,7 +34,7 @@ def split_peaks(prot_arr, pr, skp=0):
     returns
     'right_bases': array([32]), 'left_bases': array([7])
     """
-    peaks = list(preproc.peak_picking(prot_arr))
+    peaks = list(st.peak_picking(prot_arr))
     left_bases = peaks[1]["left_bases"]
     right_bases = peaks[1]["right_bases"]
     fr_peak = peaks[0]

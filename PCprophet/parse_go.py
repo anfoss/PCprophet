@@ -227,7 +227,7 @@ def combine_all(G, gaf, t):
     return "\t".join([str(x) for x in out])
 
 
-def common_parent_go_ids(terms, go):
+def common_parent(terms, go):
     """
     This function finds the common ancestors in the GO
     tree of the list of terms in the input.

@@ -5,7 +5,7 @@ import networkx as nx
 
 import PCprophet.io_ as io
 import PCprophet.mcl as mc
-import PCprophet.signal_prc as preproc
+import PCprophet.stats_ as st
 
 
 # standardize and center methods
@@ -19,12 +19,12 @@ def center_arr(hoa, fr_nr="all", smooth=True, stretch=(True, 72)):
         if len([x for x in key if x > 0]) < 2:
             continue
         if smooth:
-            key = preproc.gauss_filter(key, sigma=1, order=0)
-        key = preproc.impute_namean(key)
+            key = st.gauss_filter(key, sigma=1, order=0)
+        key = st.impute_namean(key)
         if stretch[0]:
             # input original length wanted length
-            key = preproc.resample(key, len(key), output_fr=stretch[1])
-        key = preproc.resize(key)
+            key = st.resample(key, len(key), output_fr=stretch[1])
+        key = st.resize(key)
         norm[k] = list(key)
     return norm
 

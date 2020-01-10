@@ -12,7 +12,6 @@ import numpy as np
 
 
 import PCprophet.io_ as io
-import PCprophet.signal_prc as sig
 import PCprophet.stats_ as st
 
 
@@ -34,7 +33,7 @@ def plot_positive(comb, sid, pl_dir):
     def rescale_fract(row, sid):
         ids, rep = row['COND'], row['REPL']
         fr = sid[(sid['cond']==ids) & (sid['repl']==rep)]['fr'].values
-        return np.array(sig.resize_plot(row["INT"], input_fr=72, output_fr=fr))
+        return np.array(st.resize_plot(row["INT"], input_fr=72, output_fr=fr))
 
     def rescale_peak(row, sid):
         ids, rep = row['COND'], row['REPL']

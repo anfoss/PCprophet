@@ -19,6 +19,7 @@ import scipy.stats as sta
 import PCprophet.io_ as io
 import PCprophet.aligner as aligner
 import PCprophet.stats_ as st
+import PCprophet.parse_go as go_parser
 
 
 # datatype which we use for mapping protein ids to a corresponding
@@ -592,9 +593,10 @@ def create_complex_report(infile, sto, sid, outfile="ComplexReport.txt"):
     combined.drop(["PKS", "INT", "ID"], inplace=True, axis=1)
     com = combined.groupby(["CMPLX", "COND", "REPL"], as_index=False).mean()
     mrg = pd.merge(sto, com, on=['CMPLX', 'COND'])
-    # and convert the fraction sel to the new one
-    fr = dict(zip(info["cond"], info["fr"]))
     mrg["is complex"] = np.where(mrg["P"] >= 0.5, "Positive", "Negative")
+
+    # convert the fraction sel to the new one
+    fr = dict(zip(info["cond"], info["fr"]))
     mrg["SEL"] = mrg.apply(lambda row: rescale_fr(row, fr), axis=1)
     search = []
     for v in mrg["CMPLX"]:
@@ -629,6 +631,44 @@ def create_complex_report(infile, sto, sid, outfile="ComplexReport.txt"):
     # now rename all the columns
     mrg = mrg.rename(dict(zip(list(mrg), header)), axis=1)
     mrg[['Completness']] = mrg[['Completness']].fillna(value=0)
+
+
+    # add GO terms
+    go = pd.read_csv(io.resource_path('go_terms_class.txt'), sep="\t")
+    id2name = dict(zip(go['id'], go['names']))
+    gaf = go_parser.read_gaf_out(io.resource_path('tmp_GO_sp_only.txt'))
+
+    def go_name(gn, gaf, id2name):
+        """
+        receive list of GN and converts them back to the gn ontology name
+        """
+        # cc, mf, bp = set(), set(), set()
+        nm = {'CC': set(), 'MF': set(), 'BP': set()}
+        for g in gn.split(':'):
+            for onto in gaf[g]:
+                if onto in ['CC', 'MF', 'BP']:
+                    {nm[onto].add(x) for x in gaf[g][onto].split(';')}
+        cc = ";".join([id2name.get(x, x) for x in nm['CC'] if 'GO' in x])
+        mf = ";".join([id2name.get(x, x) for x in nm['MF'] if 'GO' in x])
+        bp = ";".join([id2name.get(x, x) for x in nm['BP'] if 'GO' in x])
+        xx = lambda x: x if x else ''
+        return xx(cc),xx(mf),xx(bp)
+
+    cc , mf, bp = [], [], []
+    for gn in list(mrg['Members']):
+        try:
+            c, m, b = go_name(gn, gaf, id2name)
+            cc.append(c)
+            mf.append(m)
+            bp.append(b)
+        except ValueError as e:
+            cc.append('')
+            mf.append('')
+            bp.append('')
+    mrg['Common GO Cellular Component'] = cc
+    mrg['Common GO Biological Process'] = bp
+    mrg['Common GO Molecular Function'] = mf
+    mrg.to_csv(outfile, sep="\t", index=False)
     mrg.to_csv(outfile, sep="\t", index=False)
 
 

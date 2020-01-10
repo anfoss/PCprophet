@@ -6,7 +6,6 @@ from scipy import stats
 import pandas as pd
 from scipy.ndimage import uniform_filter
 
-import PCprophet.signal_prc as preproc
 import PCprophet.parse_go as go
 import PCprophet.io_ as io
 import PCprophet.stats_ as st
@@ -34,7 +33,7 @@ class ProteinProfile(object):
         return self.peaks
 
     def calc_peaks(self):
-        pks = list(preproc.peak_picking(self.inten)[0])
+        pks = list(st.peak_picking(self.inten)[0])
         # avoid breakage due to float
         self.peaks = [int(x) for x in pks]
 
@@ -184,7 +183,7 @@ class ComplexProfile(object):
         for prot in self.members:
             peak = int(self.pks_ali[prot.get_acc()])
             prot_peak = prot.get_inte()[(peak - q) : (peak + q)]
-            prot_fwhm = preproc.fwhm(list(prot_peak))
+            prot_fwhm = st.fwhm(list(prot_peak))
             width.append(prot_fwhm)
         self.width = np.mean(width)
 
