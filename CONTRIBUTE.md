@@ -32,7 +32,6 @@ The rest are modules which have functions used by more than one module, or for w
 * io_.py - I/O methods
 * mcl.py - Markov based clustering for generating possible complexes from a ppi network
 * parse_go.py - Implements GO based tree search and similarity methods calculation
-* signal_prc.py - Toolset for signal processing
 * stats_py - Frequently used statistical metrics
 * validate_input.py - Input tester
 
@@ -119,7 +118,7 @@ class ImportantClass(object):
 ```
 
 
-* Line length is 80 characters, apart when a long chained Pandas statement is used.
+* Line length is 80 characters, apart when a long chained Pandas statement is used. We use spaces over tabs as separator due to the consistency across different ide
 
 ```python
 (df.groupby[['x','y']]
@@ -145,6 +144,8 @@ def test_do_something_important():
     """
     if do_something_important():
         pass
+    else:
+        raise DoSomeThingImportException
 ```
 * Functions used only once in a specific module or function should be encapsulated within the function they are called in. We used both lambdas or functions depending on the context
 
