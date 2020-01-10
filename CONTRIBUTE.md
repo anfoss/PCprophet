@@ -81,7 +81,7 @@ Our final goal is to allow biologists to have a quick and easy way to analyze co
 
 * Which feature would need to be added
 
-* Which type of experiments will be possible to analyze thanks to that
+* Rational
 
 * In which module it should be added
 
