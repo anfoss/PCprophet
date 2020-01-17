@@ -13,8 +13,28 @@ In the PCprophet package, all parameters can be configured either via the ‘Pro
 -sid  Sample identifier file
 -cal  Calibration file (no headers)
 -mw_uniprot Gene names to molecular mass
-
+-db Database (either in CORUM format or STRING format)
 ```
+
+**Note:** -db can be either a protein-protein interaction network or a complex database but it __always needs to be provided__.
+
+The CORUM-link database can be user provided but as minimal requirement needs to have the following columns
+
+- *ComplexID* unique numeric identifier
+- *ComplexName* complex identifier
+- *subunits(Gene name)* ; separated list of __gene names__ for the corresponding complex
+
+Examples for this format can be downloaded from [CORUM](http://mips.helmholtz-muenchen.de/corum/#download)
+
+In case of PPI database the format needs to be
+
+|ProtA|ProtB|
+|:----|:----|
+|A    |B    |
+|D    |A    |
+|C    |E    |
+
+In this case a Markov clustering is first performed to generate putative complexes which are then used for FDR control. PPI derived complexes are characterize by the identifier ppi__nr where nr stands for the cluster number from the Markov cluster
 
 ##### Pre-processing parameters:
 
@@ -52,7 +72,7 @@ In the PCprophet package, all parameters can be configured either via the ‘Pro
 **-co CAL** Extrapolates the molecular weight from the apex peak for the reported complex using the calibration provided. Then selects the complex with the closer mass to the theoretical weight. If for example extrapolated MW for this set of complexes is 200000 Da then A,B,C will be selected
 
 
-> **Note:** __We recommend using doing collapsing based on calibration curve and molecular weight as this enforces the correct mass distribution__
+> **Note:** __We recommend using collapsing based on calibration curve and molecular weight as this enforces the correct mass distribution__
 
 
 All of the above parameters have the following default settings
@@ -113,6 +133,7 @@ Here is an example of a complete table with two conditions and three replicates
 
 ---
 ### Running PCprophet
+
 PCprophet can be using all default settings with
 
 
@@ -140,8 +161,9 @@ In the output folder the following text files are present:
 
 In case differential analysis was performed two additional text files and one folder are going to be present
 
-- __DifferentialComplexReport.txt__: Complex-level differential analysis, where complexes are ranked based on the average difference between their protein co-elution profile.
-- __DifferentialProteinReport.txt__: Protein-level differential analysis, where the average profile difference between each condition is reported.
+- __DifferentialComplexReport.txt__: Complex-level differential analysis, where complexes are scored based on the Baysean factors for the individual proteins
+
+- __DifferentialProteinReport.txt__: Protein-level differential analysis, where the Baysean probability difference between each condition is reported.
 
 
 - __Differential__: Differential delta plot of intensity between every condition and control. A flat line represents no difference between control and condition. A positive peak represents an increase in the control; while a negative peak represents an increase in the condition (right Y axis).
@@ -149,7 +171,6 @@ In case differential analysis was performed two additional text files and one fo
 
 PCprophet generates the following QC plots
 
-- __ConditionAlignement.pdf__: Profile plot of common complexes across all the provided experiments used to realign the data.
 
 - __FalseDiscoveryRate.pdf__: an FDR plot where the positive hypotheses are filtered to control for false discovery rate using the positive complexes database provided. If not provided a fixed threshold of 0.5 is used.
 
@@ -160,7 +181,8 @@ One folder for each __short_id__ will be generated. Within that folder all the p
 
 ### Import results into Cytoscape
 
-Both __PPIReport.txt__ and __DifferentialProteinReport.txt__ are fully compatible with Cytoscape import without the need for any formatting. As example here we import __DifferentialProteinReport.txt__ to gain some insights into which type of
+Both __PPIReport.txt__ and __DifferentialProteinReport.txt__ are fully compatible with Cytoscape import without the need for any additional formatting
+
 
 ### FAQ and solution to common problems
 
