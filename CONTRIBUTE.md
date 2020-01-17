@@ -47,7 +47,7 @@ This section guides you through submitting a bug report for PCprophet.
 
 #### Before Submitting A Bug Report
 
-* **Check the [Vignette](https://discuss.atom.io/c/faq)** for a list of common questions and problems.
+* **Check the [Vignette](https://github.com/fossatiA/PCprophet/blob/master/PCprophet_instructions.md)** for a list of common questions and problems.
 
 
 #### How Do I Submit A (Good) Bug Report?
@@ -58,7 +58,6 @@ Explain the problem and include details to help maintainers reproduce the proble
 * **Use a clear and descriptive title** for the issue to identify the problem.
 * **Provide example of sample_ids.txt and a sample of the input matrix used**. Include links to files that can be useful for us to reproduce the error and to help us solving this issue faster
 * **Report the error/exception raised and which parameters were used**
-* **Explain which behavior you expected to see instead and why.**
 * **Copy the .conf file and .spec file from PCprophet**
 * **Copy the terminal output** Every module in case of correct behaviour will print a message at the end of the runner() method. This ease up to point at faulty modules and can tell us if the previous modules failed or behaved as expected. Please copy that and attach it to the bug report
 

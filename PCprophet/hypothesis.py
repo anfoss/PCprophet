@@ -132,9 +132,7 @@ def runner(infile, hypothesis, use_fr):
     """
     if hypothesis is "all":
         print("Generating hypothesis for " + infile)
-        hypo, df_s = collapse_prot(
-            infile=infile, use=use_fr
-        )
+        hypo, df_s = collapse_prot(infile=infile, use=use_fr)
         base = io.file2folder(infile, prefix="./tmp/")
         nm = os.path.join(base, "hypo.txt")
         io.wrout(hypo, nm, ["ID", "MB", "FT"], is_hyp=True)

@@ -52,6 +52,7 @@ def optimize_mcl(matrix, results, clusters):
             infl = inflation
     return infl
 
+
 def runner(infile, db, is_ppi, use_fr):
     """
     argv[1] = input name conv2gn out

@@ -11,7 +11,6 @@ import PCprophet.io_ as io
 import PCprophet.stats_ as st
 
 
-
 class ProteinProfile(object):
     """
     docstring for ProteinProfile
@@ -87,10 +86,7 @@ class ComplexProfile(object):
             yield "{}\t{}\t{}".format(k, self.get_name(), self.pks[k])
 
     def calc_go_score(self, goobj, gaf):
-        self.score = go.combine_all(goobj,
-                                     gaf,
-                                     np.array(self.get_members()),
-                                     )
+        self.score = go.combine_all(goobj, gaf, np.array(self.get_members()),)
 
     def format_ids(self):
         """
@@ -375,8 +371,7 @@ def runner(base, go_obo, tsp_go):
     # get tmp/filename folder
     cmplx_comb = os.path.join(base, "cmplx_combined.txt")
     # print(os.path.dirname(os.path.realpath(__file__)))
-    wr, pks = mp_cmplx(filename=cmplx_comb, goobj=go_tree,
-                       gaf=gaf)
+    wr, pks = mp_cmplx(filename=cmplx_comb, goobj=go_tree, gaf=gaf)
     feature_path = os.path.join(base, "mp_feat_norm.txt")
     feat_header = [
         "ID",
