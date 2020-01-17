@@ -32,6 +32,7 @@ class ProphetExperiment(object):
       annotation: name
       base: path
       mw: mw from uniprot
+      raw: raw rescaled to 72 protein matrix
       cal: calibration file generated from collapse.calc_calibration
 
     Raises:
@@ -275,8 +276,9 @@ class ProphetExperiment(object):
         df['RAWINT'] = self.raw.apply(mrg, axis=1)
         df['CMPLX'] = df['ID']
         df['P'] = -1
-        # important to leave this one null ?
-        df['INT'] = -1
+        joinall = lambda x: '#'.join(x.dropna().astype(str))
+        prote = self.prot_matrix.apply(joinall, axis=1)
+        df['INT'] = prote
         df['CREP'] = self.condition
         df[['COND', 'REPL']] = df.CREP.str.split('_', expand=True)
         df['SEL'] = self.raw.apply(lambda x: np.argmax(x), axis=1)
@@ -288,8 +290,6 @@ class MultiExperiment(object):
     '''
     docstring for MultiExperiment
     collapse multiple PCProphetExperiments into a single 'combined.txt'
-
-
     '''
 
     def __init__(self):

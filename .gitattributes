@@ -1,0 +1,5 @@
+*.obo filter=lfs diff=lfs merge=lfs -text
+.obo filter=lfs diff=lfs merge=lfs -text
+PCprophet/.obo filter=lfs diff=lfs merge=lfs -text
+PCprophet/*.obo filter=lfs diff=lfs merge=lfs -text
+PCprophet/tmp_GO_sp_only.txt filter=lfs diff=lfs merge=lfs -text

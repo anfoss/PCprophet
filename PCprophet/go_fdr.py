@@ -163,12 +163,11 @@ def fdr_from_GO(cmplx_comb, target_fdr, fdrfile):
     use positive predicted annotated from db to estimate hypothesis fdr
     """
     pos = cmplx_comb[cmplx_comb['IS_CMPLX']=='Yes' ]
-    # remove laready here the hypothesis with 0 go
+    # remove already here the hypothesis with 0 go
     hypo = pos[(pos['ANN']!=1) & (pos['TOTS'] > 0)]
     db = cmplx_comb[cmplx_comb['ANN']==1]
     db_use = eval_complexes(cmplx_comb)
     io.create_file(fdrfile, ['fdr', 'sumGO'])
-    estimated_fdr = 0.5
     if target_fdr > 0 :
         thresh = list(pos['TOTS'])
         go_cutoff = 0
