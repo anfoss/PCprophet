@@ -12,7 +12,7 @@ These instructions will get you a copy of the project up and running on your loc
 * [NetworkX >2.1](https://networkx.github.io)
 * [Pandas >0.23](https://pandas.pydata.org)
 * [Scipy >1.1.0](https://www.scipy.org)
-* [Java vxx](https://www.java.com)
+* [Java v1.8](https://www.java.com)
 * [Igraph](https://igraph.org/python/)
 
 ### Installing
@@ -31,7 +31,7 @@ This will get you a working copy copy of PCprophet
 #### GUI version
 
 
-- Install Java vxx
+- Install Java v1.8
 - Clone the repo
 
 ```
@@ -47,7 +47,7 @@ For usage of PCprophet refers to the [PCprophet_instructions.md](https://github.
 ## Built With
 
 * [Pynstaller](https://www.pyinstaller.org) - Package builder
-* [...](....) - GUI builder
+* [NetBeans](https://netbeans.org/) - GUI builder
 
 
 ## Contributing
