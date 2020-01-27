@@ -17,14 +17,14 @@ These instructions will get you a copy of the project up and running on your loc
 
 ### Installing
 
-We recommend using [anaconda](https://www.anaconda.com) as it contains all required packages for PCprophet
+We recommend using [anaconda](https://www.anaconda.com) as it contains the majority of the required packages for PCprophet, while igraph needs to be installed separately [here](https://igraph.org/python/)
 
 #### Command line version
 
 ```
 github clone https://github.com/fossatiA/PCprophet PCprophet
 ```
-This will get you a working copy of PCprophet
+This will get you a working copy of PCprophet into a folder called PCprophet
 
 > **note** for the command line version only Python3 and related package dependencies are necessary
 
@@ -37,7 +37,7 @@ This will get you a working copy of PCprophet
 ```
 github clone https://github.com/fossatiA/PCprophet PCprophet
 ```
-
+> **note** for the GUI version installtion of java is necessary
 
 ## Usage
 
