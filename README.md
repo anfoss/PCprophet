@@ -24,7 +24,7 @@ We recommend using [anaconda](https://www.anaconda.com) as it contains all requi
 ```
 github clone https://github.com/fossatiA/PCprophet PCprophet
 ```
-This will get you a working copy copy of PCprophet
+This will get you a working copy of PCprophet
 
 > **note** for the command line version only Python3 and related package dependencies are necessary
 
