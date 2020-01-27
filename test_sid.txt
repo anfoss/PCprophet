@@ -1,2 +1,0 @@
-Sample	cond	group	short_id	repl	fr
-./Input/mitosis_3.txt	Ctrl	1	mitosis	3	65

@@ -99,13 +99,17 @@ def plot_repl_prof(filt, fold):
         sns.lineplot(x=fractions, y='reINT', hue='ID',
                      estimator=None, data=filt
                     )
-
-
-    g = sns.FacetGrid(filt, col="REPL")
+    print(filt.shape)
     fractions = [int(x) for x in range(1, len(filt["reINT"].iloc[0]) + 1)]
-    g.map(plot_sec, filt, fractions)
-    g.add_legend()
+    ax = sns.lineplot(x=fractions, y='reINT', hue='ID',
+                 estimator=None, data=filt
+                )
     plt.show()
+    assert False
+    # g = sns.FacetGrid(filt, col="REPL")
+    # g.map(plot_sec, filt, fractions)
+    # g.add_legend()
+    # plt.show()
 
 
 def plot_profiles(filt, fold):
