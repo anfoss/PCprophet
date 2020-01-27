@@ -22,7 +22,7 @@ We recommend using [anaconda](https://www.anaconda.com) as it contains the major
 #### Command line version
 
 ```
-github clone https://github.com/fossatiA/PCprophet PCprophet
+git clone https://github.com/fossatiA/PCprophet PCprophet
 ```
 This will get you a working copy of PCprophet into a folder called PCprophet
 
@@ -35,7 +35,7 @@ This will get you a working copy of PCprophet into a folder called PCprophet
 - Clone the repo
 
 ```
-github clone https://github.com/fossatiA/PCprophet PCprophet
+git clone https://github.com/fossatiA/PCprophet PCprophet
 ```
 > **note** for the GUI version installtion of java is necessary
 
