@@ -60,7 +60,6 @@ Please read [CONTRIBUTE.md](https://github.com/fossatiA/PCprophet/blob/master/CO
 * **Andrea Fossati** - *Initial work* - [fossatiA](https://github.com/fossatiA) fossati@imsb.biol.ethz.ch
 * **Chen Li** - *Initial work* - chen.li@monash.edu
 
-See also the list of [contributors](https://github.com/your/project/contributors) who participated in this project.
 
 ## License
 
