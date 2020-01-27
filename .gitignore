@@ -151,4 +151,5 @@ ProphetConfig.conf
 hsa_MW.txt
 20190513_CORUMcoreComplexes.txt
 cal.txt
+main_test.py
 PCprophet/tmp_GO_sp_only.txt
