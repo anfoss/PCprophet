@@ -21,9 +21,13 @@ We recommend using [anaconda](https://www.anaconda.com) as it contains the major
 
 #### Command line version
 
+Ensure that you have installed the GitHub tool and 'git-lfs' command specifically for large file transfer. Please see [here](https://gist.github.com/derhuerst/1b15ff4652a867391f03) for installing GitHub and [here](https://help.github.com/en/github/managing-large-files/installing-git-large-file-storage) for installing 'git-lfs' command.
+
 ```
 git clone https://github.com/fossatiA/PCprophet PCprophet
 ```
+
+
 This will get you a working copy of PCprophet into a folder called PCprophet
 
 > **note** for the command line version only Python3 and related package dependencies are necessary
