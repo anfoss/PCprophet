@@ -183,6 +183,17 @@ One folder for each __short_id__ will be generated. Within that folder all the p
 
 Both __PPIReport.txt__ and __DifferentialProteinReport.txt__ are fully compatible with Cytoscape import without the need for any additional formatting
 
+### PCProphet specific exceptions and errors
+
+Depending on the error raised different fixes are needed.
+
+- __NaRowError / NaInMatrixError__: There are 'NA' values in the input matrix, substitute them with 0
+- __MissingColumnError__: Identifier columns (GN or ID) are missing
+- __DuplicateRowError / DuplicateIdentifierError__: There are duplicates in the GN column. A common cause of this is mapping of isoform to the same gene name. Just add \_1 to one of the duplicate gene names
+- __EmptyColumnError__: A column is only NA
+
+*Note* for imputing column values in case of different number of fractions add a full 0 column
+
 
 ### FAQ and solution to common problems
 
