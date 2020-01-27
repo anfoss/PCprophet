@@ -3,6 +3,18 @@
 In the PCprophet package, all parameters can be configured either via the ‘ProphetConfig.conf’ file or via by running PCprophet using the command. When running the PCprophet, the parameters indicated in the command will be written into the ‘ProphetConfig.conf’ file. Generally, four types of features are needed:
 
 
+## Input file
+
+Input file need to be a wide format matrix with two essential columns:
+
+__GN__ : Gene name, needs to be the first column
+__ID__ : Uniprot identifier, needs to be the second column
+
+Remaining columns needs to be ordered according to the fractionation scheme used. There is no strict requirement for column names apart from GN and ID, but they need to be ordered.
+All quantitation schemes commonly used in proteomics such as MS1 or MS2 ion-extracted chromatogram (XIC), spectral counts (SPCs) and TMT or SILAC ratios are supported.
+
+Examples of correct formatting are provided in the test_fract.txt data
+
 ### Parameter setup
 
 
