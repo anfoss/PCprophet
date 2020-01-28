@@ -8,7 +8,7 @@ import os
 from time import time
 import platform
 import multiprocessing.dummy as mult_proc
-from functools import partial
+from functools import partialø
 
 
 # modules
