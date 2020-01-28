@@ -7,7 +7,7 @@ Software toolkit for protein complex prediction and differential analysis of cof
 These instructions will get you a copy of the project up and running on your local machine and how to test the compatibility with your current Python packages
 ### Prerequisites
 
-* [Python 3.x](https://www.python.org)
+* [Python >=3.4.x](https://www.python.org)
 * [Sklearn 0.20.3](https://pypi.org/project/sklearn/)
 * [NetworkX >2.1](https://networkx.github.io)
 * [Pandas >0.23](https://pandas.pydata.org)
