@@ -72,9 +72,12 @@ def plot_repl_prof(filt, fold, cols):
     plt.rcParams["grid.color"] = "k"
     plt.rcParams["grid.linestyle"] = ":"
     plt.rcParams["grid.linewidth"] = 0.5
-    # create one subplot per replicate
     repl = set(filt['REPL'])
     fig, axes = plt.subplots(len(set(repl)),figsize=(9, 9), facecolor="white")
+    print(axes)
+    print(repl)
+    if len(repl)==1:
+        axes = [axes]
     for i, row in enumerate(axes):
         plot_single(row, filt, list(repl)[i])
 
@@ -89,70 +92,15 @@ def plot_repl_prof(filt, fold, cols):
     # take first element without creating a new list
     if "/" in ids:
         ids = ids.replace("/", " ")
-    plotname = os.path.join(str(fold) + "/%s.pdf" % str(ids))
+    cnd = list(set(filt['COND']))
+    plotname = os.path.join(fold, cnd[0], "%s.pdf" % str(ids))
     try:
         fig.savefig(plotname, dpi=800, bbox_inches="tight")
     except OSError as exc:
+        # catch name too long
         if exc.errno == 63:
             ids = ids.split("#")[0]
-            plotname = os.path.join(str(fold) + "/%s.pdf" % str(ids))
-            fig.savefig(plotname, dpi=800, bbox_inches="tight")
-        else:
-            raise exc
-    plt.close()
-    return True
-
-
-def plot_profiles(filt, fold):
-    """
-    plot sec profiles and highlights average region of peak
-    """
-    csfont = {"fontname": "sans-serif"}
-    plt.rcParams["axes.facecolor"] = "white"
-    plt.rcParams["grid.color"] = "k"
-    plt.rcParams["grid.linestyle"] = ":"
-    plt.rcParams["grid.linewidth"] = 0.5
-    fig, ax = plt.subplots(figsize=(9, 9), facecolor="white")
-    ax.grid(color="grey", linestyle="--", linewidth=0.25, alpha=0.5)
-    fractions = [int(x) for x in range(1, len(filt["reINT"].iloc[0]) + 1)]
-    print(fractions)
-    pk = np.median(filt["reSEL"].values)
-    for index, row in filt.iterrows():
-        plt.plot(
-            fractions, row["reINT"], "-", lw=1, label=str(row["ID"]),
-        )
-    plt.legend(
-        loc="best",
-        title="Subunits",
-        title_fontsize=16,
-        prop={"family": "sans-serif", "size": 9},
-    )
-    # now we highlight the region where the peak is
-    crep = next(iter(set(filt["CREP"])))
-    foldname = os.path.join(fold, crep)
-    if np.median(filt["P"].values > 0.5):
-        foldname = smart_makefold(foldname, "Positive")
-        plt.axvspan(pk - 3, pk + 3, color="grey", alpha=0.2)
-    else:
-        foldname = smart_makefold(foldname, "Negative")
-    plt.xlabel("Rescaled fraction (arb. unit)", fontsize=9, **csfont)
-    plt.ylabel("Rescaled intensity", fontsize=9, **csfont)
-
-    # now we take care of name loc and so on
-    nm = filt["CMPLX"].values[0]
-    ids = nm
-    title = ax.set_title("\n".join(nm.split("#")), fontsize=12, **csfont)
-    # take first element without creating a new list
-    if "/" in ids:
-        ids = ids.replace("/", " ")
-
-    plotname = os.path.join(str(foldname) + "/%s.pdf" % str(ids))
-    try:
-        fig.savefig(plotname, dpi=800, bbox_inches="tight")
-    except OSError as exc:
-        if exc.errno == 63:
-            ids = ids.split("#")[0]
-            plotname = os.path.join(str(foldname) + "/%s.pdf" % str(ids))
+            plotname = os.path.join(fold, cnd[0], "%s.pdf" % str(ids))
             fig.savefig(plotname, dpi=800, bbox_inches="tight")
         else:
             raise exc
@@ -352,10 +300,6 @@ def plot_recall(out_fold):
     return True
 
 
-def plot_diff(out_fold):
-    pass
-
-
 def runner(tmp_fold, out_fold, target_fdr, sid):
     """
     performs all plots using matplotlib
@@ -375,4 +319,3 @@ def runner(tmp_fold, out_fold, target_fdr, sid):
     comb = os.path.join(tmp_fold, "combined.txt")
     plot_positive(comb, sid, pl_dir=outf)
     plot_network(out_fold, "PPIreport.txt")
-    # plot_differential(out_fold, tmp_fold, sid)
