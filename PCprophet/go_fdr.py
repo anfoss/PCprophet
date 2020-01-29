@@ -17,7 +17,7 @@ def db2ppi(list_sep):
     for members in list_sep:
         for pairs in st.fast_comb(members.split("#"), 2):
             ppi_db.add_edge(str.upper(pairs[0]), str.upper(pairs[1]))
-    ppi_db.remove_edges_from(ppi_db.selfloop_edges())
+    # ppi_db.remove_edges_from(nx.selfloop_edges())
     return ppi_db
 
 
