@@ -4,12 +4,8 @@ import matplotlib.pyplot as plt
 import matplotlib
 import networkx as nx
 import igraph as ig
-import seaborn as sns
-
-#  matplotlib.use('Agg')
 import pandas as pd
 import numpy as np
-
 
 import PCprophet.io_ as io
 import PCprophet.stats_ as st
@@ -26,40 +22,6 @@ def smart_makefold(path, folder):
 
 def plot_positive(comb, sid, pl_dir):
     """
-    plot all positive complexes
-    first rescale to original nr of fraction
-    then creates one folder for every crep and divide into positive and negative and inside positive there is novel
-    """
-
-    def rescale_fract(row, sid):
-        ids, rep = row["COND"], row["REPL"]
-        fr = sid[(sid["cond"] == ids) & (sid["repl"] == rep)]["fr"].values
-        return np.array(st.resize_plot(row["INT"], input_fr=72, output_fr=fr))
-
-    def rescale_peak(row, sid):
-        ids, rep = row["COND"], row["REPL"]
-        fr = sid[(sid["cond"] == ids) & (sid["repl"] == rep)]["fr"].values
-        # renormalize between peak picking rescaled to 0 fr-1 for highlight
-        return st.renormalize(row["SEL"], (0, 71), (0, fr - 1))
-
-    sa_id = pd.read_csv(sid, sep="\t", index_col=False)
-    comb = pd.read_csv(comb, sep="\t", index_col=False)
-    # remove columns with single protein ID
-    comb = comb[comb["ID"] != comb["CMPLX"]]
-    # first need to make all the folders
-    crep = list(set(comb["CREP"]))
-    crep = [os.path.join(pl_dir, x) for x in crep]
-    [os.mkdir(x) for x in crep if not os.path.isdir(x)]
-    comb["reINT"] = comb.apply(lambda row: rescale_fract(row, sa_id), axis=1)
-    comb["reSEL"] = comb.apply(lambda row: rescale_peak(row, sa_id), axis=1)
-    print("plotting complexes")
-    comb.groupby(["CMPLX", "REPL", "COND"], as_index=False).apply(
-        lambda df: plot_profiles(df, pl_dir)
-    )
-
-
-def plot_positive2(comb, sid, pl_dir):
-    """
     create 1 dir per condition and plot each complex across repl
     """
     def rescale_fract(row, sid):
@@ -75,6 +37,7 @@ def plot_positive2(comb, sid, pl_dir):
 
     sa_id = pd.read_csv(sid, sep="\t", index_col=False)
     comb = pd.read_csv(comb, sep="\t", index_col=False)
+
     # remove columns with single protein ID
     comb = comb[comb["ID"] != comb["CMPLX"]]
     comb["reINT"] = comb.apply(lambda row: rescale_fract(row, sa_id), axis=1)
@@ -84,32 +47,60 @@ def plot_positive2(comb, sid, pl_dir):
     conds = [os.path.join(pl_dir, x) for x in list(set(comb["COND"]))]
     [os.mkdir(x) for x in conds if not os.path.isdir(x)]
     comb.groupby(["CMPLX", "COND"], as_index=False).apply(
-        lambda df: plot_repl_prof(df, pl_dir)
+        lambda df: plot_repl_prof(df, pl_dir, cols=1)
     )
 
 
-def plot_repl_prof(filt, fold):
+def plot_repl_prof(filt, fold, cols):
     """
     plot profile of protein across groups
     """
-    def plot_sec(filt, fractions):
-        print(filt.shape)
-        print(len(fraction))
-        print(len(filt['reINT']))
-        sns.lineplot(x=fractions, y='reINT', hue='ID',
-                     estimator=None, data=filt
-                    )
-    print(filt.shape)
-    fractions = [int(x) for x in range(1, len(filt["reINT"].iloc[0]) + 1)]
-    ax = sns.lineplot(x=fractions, y='reINT', hue='ID',
-                 estimator=None, data=filt
-                )
-    plt.show()
-    assert False
-    # g = sns.FacetGrid(filt, col="REPL")
-    # g.map(plot_sec, filt, fractions)
-    # g.add_legend()
-    # plt.show()
+    def plot_single(axrow, filt, v):
+        filt2 = filt[filt['REPL']==v]
+        pk = np.median(filt2["reSEL"].values)
+        fractions = [int(x) for x in range(1, len(filt2["reINT"].iloc[0]) + 1)]
+        axrow.grid(color="grey", linestyle="--", linewidth=0.25, alpha=0.5)
+        for index, row in filt2.iterrows():
+            axrow.plot(
+                fractions, row["reINT"], "-", lw=1, label=str(row["ID"]),
+            )
+        if np.median(filt2["P"].values >= 0.5):
+            axrow.axvspan(pk - 3, pk + 3, color="grey", alpha=0.2)
+
+    csfont = {"fontname": "sans-serif"}
+    plt.rcParams["axes.facecolor"] = "white"
+    plt.rcParams["grid.color"] = "k"
+    plt.rcParams["grid.linestyle"] = ":"
+    plt.rcParams["grid.linewidth"] = 0.5
+    # create one subplot per replicate
+    repl = set(filt['REPL'])
+    fig, axes = plt.subplots(len(set(repl)),figsize=(9, 9), facecolor="white")
+    for i, row in enumerate(axes):
+        plot_single(row, filt, list(repl)[i])
+
+    handles, labels = axes[-1].get_legend_handles_labels()
+    fig.legend(handles, labels, loc='upper center')
+    # now we take care of name loc and so on
+    nm = filt["CMPLX"].values[0]
+    ids = nm
+    fig.suptitle("\n".join(nm.split("#")), fontsize=12, **csfont)
+    plt.xlabel("Rescaled fraction (arb. unit)", fontsize=9, **csfont)
+    plt.ylabel("Rescaled intensity", fontsize=9, **csfont)
+    # take first element without creating a new list
+    if "/" in ids:
+        ids = ids.replace("/", " ")
+    plotname = os.path.join(str(fold) + "/%s.pdf" % str(ids))
+    try:
+        fig.savefig(plotname, dpi=800, bbox_inches="tight")
+    except OSError as exc:
+        if exc.errno == 63:
+            ids = ids.split("#")[0]
+            plotname = os.path.join(str(fold) + "/%s.pdf" % str(ids))
+            fig.savefig(plotname, dpi=800, bbox_inches="tight")
+        else:
+            raise exc
+    plt.close()
+    return True
 
 
 def plot_profiles(filt, fold):
@@ -124,6 +115,7 @@ def plot_profiles(filt, fold):
     fig, ax = plt.subplots(figsize=(9, 9), facecolor="white")
     ax.grid(color="grey", linestyle="--", linewidth=0.25, alpha=0.5)
     fractions = [int(x) for x in range(1, len(filt["reINT"].iloc[0]) + 1)]
+    print(fractions)
     pk = np.median(filt["reSEL"].values)
     for index, row in filt.iterrows():
         plt.plot(
@@ -168,7 +160,7 @@ def plot_profiles(filt, fold):
     return True
 
 
-def plot_network(outf, ppi="/PPIReport.txt"):
+def plot_network(outf, ppi="./PPIReport.txt"):
     """
     plot network
     """
@@ -381,7 +373,6 @@ def runner(tmp_fold, out_fold, target_fdr, sid):
     plot_fdr(tmp_fold, out_fold, target_fdr)
     plot_recall(out_fold)
     comb = os.path.join(tmp_fold, "combined.txt")
-    plot_positive2(comb, sid, pl_dir=outf)
-    # this at the end because it could fail
-    # plot_network(out_fold, "PPIreport.txt")
+    plot_positive(comb, sid, pl_dir=outf)
+    plot_network(out_fold, "PPIreport.txt")
     # plot_differential(out_fold, tmp_fold, sid)
