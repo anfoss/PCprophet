@@ -45,9 +45,9 @@ class BayesMANOVA:
     def yok(y):
         # test whether we have replicates in all levels of y
         lvs = list(set(y))
-        ok = len(y) > 1 and len(lvs) > 1
+        ok = len(y) >= 1 and len(lvs) >= 1
         for cl in lvs:
-            ok = ok and np.sum(y == cl) > 1
+            ok = ok and np.sum(y == cl) >= 1
         return ok
 
     def __init__(self, modeltype="naive", g=0.8, h=1.5, gam=0.025):
@@ -179,9 +179,7 @@ class BayesMANOVA:
                 nrep = int(np.ceil(X.shape[1] / len(origm)))
                 m = np.tile(origm, nrep)
             y = ids2dat[cid].y
-            if type(self).yok(
-                y
-            ):  # this call allows overriding yok() by deriving from BayesMANOVA
+            if type(self).yok(y):  # this call allows overriding yok
                 lgmrgllha = self.mrgllh(y, X, m=m)
                 resdict["LGMLLHA"].append(lgmrgllha)
                 # construct the same label for all samples to mimick the
