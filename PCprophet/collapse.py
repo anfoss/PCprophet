@@ -368,7 +368,7 @@ class MultiExperiment(object):
         possible = np.column_stack(np.where(arr >= 0.5))
         G = nx.Graph()
         [G.add_edge(names[p[0]], names[p[1]]) for p in possible]
-        G.remove_edges_from(G.selfloop_edges())
+        G.remove_edges_from(nx.selfloop_edges(G, keys=True))
         return G
 
     def combine_all(self):
