@@ -73,7 +73,12 @@ def plot_repl_prof(filt, fold, cols):
     plt.rcParams["grid.linestyle"] = ":"
     plt.rcParams["grid.linewidth"] = 0.5
     repl = set(filt['REPL'])
-    fig, axes = plt.subplots(len(set(repl)),figsize=(9, 9), facecolor="white")
+    fig, axes = plt.subplots(len(set(repl)),
+                figsize=(9, 9),
+                facecolor="white",
+                sharex=True,
+                sharey=True
+                )
     print(axes)
     print(repl)
     if len(repl)==1:
@@ -82,14 +87,13 @@ def plot_repl_prof(filt, fold, cols):
         plot_single(row, filt, list(repl)[i])
 
     handles, labels = axes[-1].get_legend_handles_labels()
-    fig.legend(handles, labels, loc='upper center')
+    fig.legend(handles, labels, loc='center left', bbox_to_anchor=(1,0.5))
     # now we take care of name loc and so on
     nm = filt["CMPLX"].values[0]
     ids = nm
     fig.suptitle("\n".join(nm.split("#")), fontsize=12, **csfont)
     plt.xlabel("Rescaled fraction (arb. unit)", fontsize=9, **csfont)
     plt.ylabel("Rescaled intensity", fontsize=9, **csfont)
-    # take first element without creating a new list
     if "/" in ids:
         ids = ids.replace("/", " ")
     cnd = list(set(filt['COND']))
@@ -104,6 +108,8 @@ def plot_repl_prof(filt, fold, cols):
             fig.savefig(plotname, dpi=800, bbox_inches="tight")
         else:
             raise exc
+    plt.show()
+    assert False
     plt.close()
     return True
 
