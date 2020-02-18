@@ -49,13 +49,14 @@ def plot_positive(comb, sid, pl_dir):
     comb.groupby(["CMPLX", "COND"], as_index=False).apply(
         lambda df: plot_repl_prof(df, pl_dir, cols=1)
     )
+    return True
 
 
 def plot_repl_prof(filt, fold, cols):
     """
     plot profile of protein across groups
     """
-    def plot_single(axrow, filt, v):
+    def plot_single(axrow, filt, v, csfont):
         filt2 = filt[filt['REPL']==v]
         pk = np.median(filt2["reSEL"].values)
         fractions = [int(x) for x in range(1, len(filt2["reINT"].iloc[0]) + 1)]
@@ -66,6 +67,7 @@ def plot_repl_prof(filt, fold, cols):
             )
         if np.median(filt2["P"].values >= 0.5):
             axrow.axvspan(pk - 3, pk + 3, color="grey", alpha=0.2)
+        axrow.set_ylabel("Rescaled intensity", fontsize=9, **csfont)
 
     csfont = {"fontname": "sans-serif"}
     plt.rcParams["axes.facecolor"] = "white"
@@ -77,27 +79,30 @@ def plot_repl_prof(filt, fold, cols):
                 figsize=(9, 9),
                 facecolor="white",
                 sharex=True,
-                sharey=True
                 )
-    print(axes)
-    print(repl)
     if len(repl)==1:
         axes = [axes]
     for i, row in enumerate(axes):
-        plot_single(row, filt, list(repl)[i])
-
+        plot_single(row, filt, list(repl)[i], csfont)
     handles, labels = axes[-1].get_legend_handles_labels()
-    fig.legend(handles, labels, loc='center left', bbox_to_anchor=(1,0.5))
-    # now we take care of name loc and so on
+    axes[-1].legend(
+                handles,
+                labels,
+                # bbox_to_anchor=(0.5, -0.05),
+                loc='right',
+                ncol=2
+                )
     nm = filt["CMPLX"].values[0]
     ids = nm
     fig.suptitle("\n".join(nm.split("#")), fontsize=12, **csfont)
     plt.xlabel("Rescaled fraction (arb. unit)", fontsize=9, **csfont)
-    plt.ylabel("Rescaled intensity", fontsize=9, **csfont)
     if "/" in ids:
         ids = ids.replace("/", " ")
     cnd = list(set(filt['COND']))
     plotname = os.path.join(fold, cnd[0], "%s.pdf" % str(ids))
+
+    # this avoids the overlap of legend and subplots
+    plt.tight_layout(rect=[0,0,0.75,1])
     try:
         fig.savefig(plotname, dpi=800, bbox_inches="tight")
     except OSError as exc:
@@ -212,8 +217,6 @@ def plot_fdr(tmp_fold, out_fold, target_fdr=0.5):
         ids = os.path.basename(os.path.normpath(sample))
         x_sort, y_sort = zip(*sorted(zip(fdrfile["sumGO"], fdrfile["fdr"])))
         plt.plot(x_sort, y_sort, label=ids, linewidth=1.5, linestyle="-")
-    # plt.legend(loc="best", )
-    # let's assume ids is in triplicate all times
     plt.xlabel("GO score", fontsize=14, **csfont)
     plt.ylabel("False Discovery Rate", fontsize=14, **csfont)
     plt.axhline(y=float(target_fdr), linestyle="--", color="black")
