@@ -84,14 +84,15 @@ def plot_repl_prof(filt, fold, cols):
         axes = [axes]
     for i, row in enumerate(axes):
         plot_single(row, filt, list(repl)[i], csfont)
+    # call tight layout before legend
     handles, labels = axes[-1].get_legend_handles_labels()
-    axes[-1].legend(
-                handles,
-                labels,
-                # bbox_to_anchor=(0.5, -0.05),
-                loc='right',
-                ncol=2
-                )
+    lgd = fig.legend(
+                    handles,
+                    labels,
+                    # bbox_to_anchor=(0.5,-0.02),
+                    loc='lower center',
+                    ncol=6
+                    )
     nm = filt["CMPLX"].values[0]
     ids = nm
     fig.suptitle("\n".join(nm.split("#")), fontsize=12, **csfont)
@@ -100,21 +101,24 @@ def plot_repl_prof(filt, fold, cols):
         ids = ids.replace("/", " ")
     cnd = list(set(filt['COND']))
     plotname = os.path.join(fold, cnd[0], "%s.pdf" % str(ids))
-
-    # this avoids the overlap of legend and subplots
-    plt.tight_layout(rect=[0,0,0.75,1])
     try:
-        fig.savefig(plotname, dpi=800, bbox_inches="tight")
+        fig.savefig(
+                    plotname,
+                    dpi=800,
+                    bbox_inches="tight",
+                    )
     except OSError as exc:
         # catch name too long
         if exc.errno == 63:
             ids = ids.split("#")[0]
             plotname = os.path.join(fold, cnd[0], "%s.pdf" % str(ids))
-            fig.savefig(plotname, dpi=800, bbox_inches="tight")
+            fig.savefig(
+                        plotname,
+                        dpi=800,
+                        bbox_inches="tight",
+                        )
         else:
             raise exc
-    plt.show()
-    assert False
     plt.close()
     return True
 

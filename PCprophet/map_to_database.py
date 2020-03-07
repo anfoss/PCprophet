@@ -50,6 +50,7 @@ def optimize_mcl(matrix, results, clusters):
         qscore = mc.modularity(matrix=result, clusters=clusters)
         if qscore > newmax:
             infl = inflation
+            qscore = newmax
     return infl
 
 

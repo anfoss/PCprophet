@@ -202,28 +202,6 @@ def run_mcl(
     assert pruning_threshold >= 0, "Invalid pruning_threshold"
     assert pruning_frequency > 0, "Invalid pruning_frequency"
     assert convergence_check_frequency > 0, "Invalid convergence_check_frequency"
-    printer.print("-" * 50)
-    printer.print("MCL Parameters")
-    printer.print("Expansion: {}".format(expansion))
-    printer.print("Inflation: {}".format(inflation))
-    if pruning_threshold > 0:
-        printer.print(
-            "Pruning threshold: {}, frequency: {} iteration{}".format(
-                pruning_threshold,
-                pruning_frequency,
-                "s" if pruning_frequency > 1 else "",
-            )
-        )
-    else:
-        printer.print("No pruning")
-    printer.print(
-        "Convergence check: {} iteration{}".format(
-            convergence_check_frequency, "s" if convergence_check_frequency > 1 else ""
-        )
-    )
-    printer.print("Maximum iterations: {}".format(iterations))
-    printer.print("{} matrix mode".format("Sparse" if isspmatrix(matrix) else "Dense"))
-    printer.print("-" * 50)
 
     # Initialize self-loops
     if loop_value > 0:
@@ -234,7 +212,6 @@ def run_mcl(
 
     # iterations
     for i in range(iterations):
-        printer.print("Iteration {}".format(i + 1))
 
         # store current matrix for convergence checking
         last_mat = matrix.copy()
@@ -244,19 +221,13 @@ def run_mcl(
 
         # prune
         if pruning_threshold > 0 and i % pruning_frequency == pruning_frequency - 1:
-            printer.print("Pruning")
             matrix = prune(matrix, pruning_threshold)
 
         # Check for convergence
         if i % convergence_check_frequency == convergence_check_frequency - 1:
-            printer.print("Checking for convergence")
             if converged(matrix, last_mat):
-                printer.print(
-                    "Converged after {} iteration{}".format(i + 1, "s" if i > 0 else "")
-                )
                 break
 
-    printer.print("-" * 50)
     return matrix
 
 
