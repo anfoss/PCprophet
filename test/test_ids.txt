@@ -1,0 +1,2 @@
+Sample	cond	group	short_id	repl	fr
+./test/fract.txt	Ctrl	1	test	64

@@ -3,6 +3,8 @@ import statistics as stat
 import numpy as np
 import scipy.ndimage as image
 import scipy.signal as signal_processing
+from scipy import sparse
+from scipy.sparse.linalg import spsolve
 
 
 # basic stat
@@ -156,8 +158,28 @@ def fwhm(y, frac=2):
     indexes = np.where(d > 0)[0]
     try:
         return abs(x[indexes[-1]] - x[indexes[0]])
-    except IndexError as e:
+    except IndexError:
         return np.nan
+
+
+def als(y, lam=10, p=0.5, niter=100, pl=False, fr=75):
+    """
+    p for asymmetry and λ for smoothness.
+    generally 0.001 ≤ p ≤ 0.1
+    10^2 ≤ λ ≤ 10^9
+    """
+    y = np.array(y)
+    L = len(y)
+    D = sparse.diags([1, -2, 1], [0, -1, -2], shape=(L, L - 2))
+    D = lam * D.dot(D.transpose())
+    w = np.ones(L)
+    W = sparse.spdiags(w, 0, L, L)
+    for i in range(niter):
+        W.setdiag(w)
+        Z = W + D
+        z = spsolve(Z, w * y)
+        w = p * (y > z) + (1 - p) * (y < z)
+    return z
 
 
 def resize_plot(arr, input_fr, output_fr):

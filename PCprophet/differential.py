@@ -1,9 +1,6 @@
 # !/usr/bin/env python3
 
-import math as m
-import sys
 import re
-import copy
 import os
 import itertools
 
@@ -17,7 +14,7 @@ import scipy.stats as sta
 
 
 import PCprophet.io_ as io
-import PCprophet.aligner as aligner
+# import PCprophet.aligner as aligner
 import PCprophet.stats_ as st
 import PCprophet.parse_go as go_parser
 
@@ -320,7 +317,7 @@ def prepcplxdata(
     cplxcol,
     trgcol,
     valcols,
-    dologtrans=True,
+    dologtrans=False,
     minval=10 ** -17,
     trg2indmap=True,
 ):
@@ -437,13 +434,15 @@ def score_complexes(
 
 def extract_local_peak(row, q, mode, norm=False):
     """
-    extract local peak from SEL column and returns peaks around +-5 fractions
+    extract local peak from SEL column and returns peaks around +-q fractions
     if not possible extract 10
     """
     # move from fraction to index
     pk = int(row["SEL"] - 1)
     cols = {"abu": "RAWINT", "asm": "INT"}
     tmp = row[cols[mode]].split("#")
+    tmp = st.als(list(map(float, tmp)))
+    tmp[tmp < 0] = 0
     if norm:
         tmp = sta.zscore(np.array(tmp).astype(float), ddof=1)
     if q > 72 / 2:
@@ -451,9 +450,9 @@ def extract_local_peak(row, q, mode, norm=False):
     elif pk < q:
         return tmp[: (q * 2)]
     elif row["SEL"] > (72 - q):
-        return tmp[-(q * 2) :]
+        return tmp[-(q * 2):]
     else:
-        return tmp[(pk - q) : (pk + q)]
+        return tmp[(pk - q): (pk + q)]
 
 
 def extract_inte(df, mode, q=72, norm=False, split_cmplx=False):
@@ -484,9 +483,9 @@ def differential_(fl, mode, ids):
     """
     df = pd.read_csv(fl, sep="\t")
     if mode == "abu":
-        combined, vals = extract_inte(df, mode, norm=False)
+        combined, vals = extract_inte(df, mode, norm=False, q=8)
     elif mode == "asm":
-        combined, vals = extract_inte(df, mode, norm=False)
+        combined, vals = extract_inte(df, mode, norm=False, q=8)
     allprot, allcmplx = [], []
     for cnd in ids.keys():
         if cnd != "Ctrl":
@@ -538,7 +537,7 @@ def stoichiometry(cmplx, sel):
         prot, ratio = zip(*ratios.items())
         ratio2 = [round(x / min(ratio), 2) for x in ratio]
         return dict(zip(prot, ratio2))
-    except Exception as e:
+    except Exception:
         return dict(zip(sel.keys(), [1] * len(sel.keys())))
 
 
@@ -602,9 +601,8 @@ def create_complex_report(infile, sto, sid, outfile="ComplexReport.txt"):
     def rescale_fr(x, fr):
         try:
             return str(round(x["SEL"] * fr[x["COND"]] / 72))
-        except ValueError as e:
+        except ValueError:
             return -1
-
     print("Creating complex level report\n")
     sto = pd.read_csv(sto, sep="\t")
     info = pd.read_csv(sid, sep="\t")
@@ -615,7 +613,7 @@ def create_complex_report(infile, sto, sid, outfile="ComplexReport.txt"):
     try:
         cal = pd.read_csv("./cal.txt", sep="\t")
         cal = dict(zip([str(round(x)) for x in list(cal["FR"])], cal["MW"]))
-    except Exception as e:
+    except Exception:
         print("Calibration not provided\nThe MW will not be estimated")
     combined.drop(["PKS", "INT", "ID"], inplace=True, axis=1)
     com = combined.groupby(["CMPLX", "COND", "REPL"], as_index=False).mean()
@@ -687,14 +685,13 @@ def create_complex_report(infile, sto, sid, outfile="ComplexReport.txt"):
             cc.append(c)
             mf.append(m)
             bp.append(b)
-        except ValueError as e:
+        except ValueError:
             cc.append("")
             mf.append("")
             bp.append("")
     mrg["Common GO Cellular Component"] = cc
     mrg["Common GO Biological Process"] = bp
     mrg["Common GO Molecular Function"] = mf
-    mrg.to_csv(outfile, sep="\t", index=False)
     mrg.to_csv(outfile, sep="\t", index=False)
 
 
@@ -776,7 +773,7 @@ def runner(infile, sample, outf, temp):
     if not os.path.isdir(outf):
         os.makedirs(outf)
     ids = io.read_sample_ids_diff(sample)
-    aligned_path = os.path.join(temp, "complex_align.txt")
+    # aligned_path = os.path.join(temp, "complex_align.txt")
     calc_stoic(path=infile, tmp_fold=temp)
     sto = os.path.join(temp, "stoichiometry.txt")
     complex_report_out = os.path.join(outf, "ComplexReport.txt")
@@ -787,7 +784,10 @@ def runner(infile, sample, outf, temp):
         return True
     abu_cmplx, abu_prot = differential_(infile, "abu", ids)
     asm_cmplx, asm_prot = differential_(infile, "asm", ids)
-    allcmplx = pd.merge(abu_cmplx, asm_cmplx, on=["ID", "Condition"], how="outer")
+    allcmplx = pd.merge(abu_cmplx, asm_cmplx,
+                        on=["ID", "Condition"],
+                        how="outer"
+                        )
     allprot = pd.merge(abu_prot, asm_prot, on=["ID", "Condition"], how="outer")
     allcmplx["Type"] = allcmplx.apply(xtract_diff, axis=1)
     allprot["Type"] = allprot.apply(xtract_diff, axis=1)
@@ -818,10 +818,14 @@ def runner(infile, sample, outf, temp):
     allcmplx.rename(columns=nwnm, inplace=True)
     allcmplx.rename(columns={"ID": "ComplexID"}, inplace=True)
     allcmplx.to_csv(
-        os.path.join(outf, "DifferentialComplexReport.txt"), sep="\t", index=False
+        os.path.join(outf, "DifferentialComplexReport.txt"),
+        sep="\t",
+        index=False
     )
     allprot.rename(columns=nwnm, inplace=True)
     allprot.rename(columns={"ID": "GeneName"}, inplace=True)
     allprot.to_csv(
-        os.path.join(outf, "DifferentialProteinReport.txt"), sep="\t", index=False
+        os.path.join(outf, "DifferentialProteinReport.txt"),
+        sep="\t",
+        index=False
     )
