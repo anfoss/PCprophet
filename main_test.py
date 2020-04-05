@@ -135,7 +135,7 @@ def create_config():
         dest='multi',
         action='store',
         default='True',
-        choices = ['True', 'False']
+        choices=['True', 'False']
     )
     parser.add_argument('-w', dest='weight_pred', action='store', default=1, type=float)
     args = parser.parse_args()
@@ -186,18 +186,18 @@ def preprocessing(infile, config):
          is_ppi=config['PREPROCESS']['is_ppi'],
          use_fr=config['PREPROCESS']['all_fract'],
          )
-     hypothesis.runner(
-         infile=infile,
-         hypothesis=config['PREPROCESS']['merge'],
-         use_fr=config['PREPROCESS']['all_fract'],
-         )
-     # sample specific folder
-     tmp_folder = io.file2folder(infile, prefix=config['GLOBAL']['temp'])
-     merge.runner(base=tmp_folder, mergemode=config['PREPROCESS']['merge'])
-     generate_features.runner(
-         tmp_folder, config['GLOBAL']['go_obo'], config['GLOBAL']['sp_go']
-         )
-     predict.runner(tmp_folder)
+     # hypothesis.runner(
+     #     infile=infile,
+     #     hypothesis=config['PREPROCESS']['merge'],
+     #     use_fr=config['PREPROCESS']['all_fract'],
+     #     )
+     # # sample specific folder
+     # tmp_folder = io.file2folder(infile, prefix=config['GLOBAL']['temp'])
+     # merge.runner(base=tmp_folder, mergemode=config['PREPROCESS']['merge'])
+     # generate_features.runner(
+     #     tmp_folder, config['GLOBAL']['go_obo'], config['GLOBAL']['sp_go']
+     #     )
+     # predict.runner(tmp_folder)
      return True
 
 
@@ -207,29 +207,30 @@ def main():
     validate.InputTester(config['GLOBAL']['sid'], 'ids').test_file()
     files = io.read_sample_ids(config['GLOBAL']['sid'])
     files = [os.path.abspath(x) for x in files.keys()]
-    # if config['GLOBAL']['mult'] == 'True':
-    #     p = mult_proc.Pool(len(files))
-    #     preproc_conf=partial(preprocessing, config=config)
-    #     p.map(preproc_conf, files)
-    #     p.close()
-    #     p.join()
-    # else:
-    #     [preprocessing(infile, config) for infile in files]
-    # collapse.runner(
-    #     config['GLOBAL']['temp'],
-    #     config['GLOBAL']['sid'],
-    #     config['GLOBAL']['cal'],
-    #     config['GLOBAL']['mw'],
-    #     config['POSTPROCESS']['fdr'],
-    #     config['POSTPROCESS']['collapse_mode'],
-    # )
-    # combined_file = os.path.join(config['GLOBAL']['temp'], 'combined.txt')
-    # differential.runner(
-    #     combined_file,
-    #     config['GLOBAL']['sid'],
-    #     config['GLOBAL']['Output'],
-    #     config['GLOBAL']['temp']
-    # )
+    if config['GLOBAL']['mult'] == 'True':
+        p = mult_proc.Pool(len(files))
+        preproc_conf=partial(preprocessing, config=config)
+        p.map(preproc_conf, files)
+        p.close()
+        p.join()
+    else:
+        [preprocessing(infile, config) for infile in files]
+    collapse.runner(
+        config['GLOBAL']['temp'],
+        config['GLOBAL']['sid'],
+        config['GLOBAL']['cal'],
+        config['GLOBAL']['mw'],
+        config['POSTPROCESS']['fdr'],
+        config['POSTPROCESS']['collapse_mode'],
+    )
+    combined_file = os.path.join(config['GLOBAL']['temp'], 'combined.txt')
+    differential.runner(
+        combined_file,
+        config['GLOBAL']['sid'],
+        config['GLOBAL']['Output'],
+        config['GLOBAL']['temp']
+    )
+    assert False
     plots.runner(
         config['GLOBAL']['temp'],
         config['GLOBAL']['Output'],

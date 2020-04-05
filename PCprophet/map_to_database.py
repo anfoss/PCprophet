@@ -9,7 +9,7 @@ import PCprophet.stats_ as st
 
 
 # standardize and center methods
-def center_arr(hoa, fr_nr="all", smooth=True, stretch=(True, 72)):
+def center_arr(hoa, fr_nr="all", smooth=True, stretch=(True, 72), resc=True):
     norm = {}
     for k in hoa:
         key = hoa[k]
@@ -24,7 +24,8 @@ def center_arr(hoa, fr_nr="all", smooth=True, stretch=(True, 72)):
         if stretch[0]:
             # input original length wanted length
             key = st.resample(key, len(key), output_fr=stretch[1])
-        key = st.resize(key)
+        if resc:
+            key = st.resize(key)
         norm[k] = list(key)
     return norm
 
@@ -63,8 +64,11 @@ def runner(infile, db, is_ppi, use_fr):
     prot = io.read_txt(infile)
     print("mapping " + infile + " to " + db)
     # write it for differential stretch it to assert same length
-    prot_notnorm = center_arr(prot, stretch=(True, 72), smooth=False)
-
+    prot_notnorm = center_arr(prot,
+                              stretch=(True, 72),
+                              smooth=False,
+                              resc=False
+                              )
     # perform normalization
     prot = center_arr(prot, fr_nr=use_fr, stretch=(True, 72))
     pr_df = io.create_df(prot)
@@ -80,7 +84,6 @@ def runner(infile, db, is_ppi, use_fr):
     # write transf matrix
     dest = os.path.join(base, "transf_matrix.txt")
     pr_df.to_csv(dest, sep="\t", encoding="utf-8")
-
     # write raw data
     prot_notnorm_df = io.create_df(prot_notnorm)
     prot_notnorm_df.index.name = "ID"

@@ -399,7 +399,6 @@ def score_complexes(
     (cplx2pids, pids, Xdfrm, pids2dat) = prepcplxdata(
         dfrm, pidcol="ID", cplxcol="CMPLX", trgcol="COND", valcols=valcols
     )
-
     if mode == "protein":
         bmn = BayesMANOVA()
         # calculate Bayesian probabilities of differential on protein.
@@ -415,7 +414,6 @@ def score_complexes(
         bpdr_prot_zmn.sort_values("PB4DEX", ascending=False, inplace=True)
         # bpdr_prot_d is better than assuming zero mean prior
         return bpdr_prot_d
-
     else:
         # finaly we do a full calculation for complexes. Full calculation
         # generates for every protein coimplex a feature matrix X which
@@ -443,18 +441,14 @@ def extract_local_peak(row, q, mode, norm=False):
     cols = {"abu": "RAWINT", "asm": "INT"}
     tmp = row[cols[mode]].split("#")
     tmp = np.array(list(map(float, tmp))).flatten()
-    # start = time.process_time()
-    tmp = st.als(tmp, niter=50)
-    tmp[tmp < 0] = 0
     if norm:
         tmp = sta.zscore(tmp, ddof=1)
+    tmp = list(tmp)
     if q > 72 / 2:
         return tmp
     elif pk < q:
-        # print(time.process_time() - start)
         return tmp[: (q * 2)]
     elif row["SEL"] > (72 - q):
-        # print(time.process_time() - start)
         return tmp[-(q * 2):]
     else:
         return tmp[(pk - q): (pk + q)]
@@ -469,6 +463,14 @@ def extract_inte(df, mode, q=72, norm=False, split_cmplx=False):
         df = io.explode(df=df, lst_cols=["CMPLX"])
     df["pksINT"] = df.apply(lambda x: extract_local_peak(x, q, mode, norm), axis=1)
     vals = list(map("{0}".format, list(range(1, (2 * q) + 1))))
+    # use dict to avoid duplicates, smooth raw profiles
+    if mode == 'abu':
+        print(df)
+        assert False
+        ll = dict(zip(df['ID'], df['pksINT']))
+        ll = {k: st.als(np.array(v), niter=50) for k, v in ll.items()}
+        df['pksINT'] = df['ID'].map(ll)
+        print(df['pksINT'])
     # if q is less than length
     if q > 72 / 2:
         vals = list(map("{0}".format, list(range(1, q + 1))))
