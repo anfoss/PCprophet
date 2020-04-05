@@ -3,6 +3,7 @@
 import re
 import os
 import itertools
+import time
 
 import pandas as pd
 import numpy as np
@@ -441,15 +442,19 @@ def extract_local_peak(row, q, mode, norm=False):
     pk = int(row["SEL"] - 1)
     cols = {"abu": "RAWINT", "asm": "INT"}
     tmp = row[cols[mode]].split("#")
-    tmp = st.als(list(map(float, tmp)))
+    tmp = np.array(list(map(float, tmp))).flatten()
+    # start = time.process_time()
+    tmp = st.als(tmp, niter=50)
     tmp[tmp < 0] = 0
     if norm:
-        tmp = sta.zscore(np.array(tmp).astype(float), ddof=1)
+        tmp = sta.zscore(tmp, ddof=1)
     if q > 72 / 2:
         return tmp
     elif pk < q:
+        # print(time.process_time() - start)
         return tmp[: (q * 2)]
     elif row["SEL"] > (72 - q):
+        # print(time.process_time() - start)
         return tmp[-(q * 2):]
     else:
         return tmp[(pk - q): (pk + q)]
