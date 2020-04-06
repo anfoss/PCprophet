@@ -252,9 +252,11 @@ def plot_recall(out_fold):
     csfont = {"fontname": "sans-serif"}
     fig, ax = plt.subplots(figsize=(6, 6), facecolor="white")
     repo = os.path.join(out_fold, "ComplexReport.txt")
-    repo = pd.read_csv(repo, sep="\t", index_col=False)
+    repo = pd.read_csv(repo, sep="\t")
     repo = repo[repo["Is Complex"] == "Positive"]
-    sum_e = repo.groupby(["Condition", "Replicate", "Reported"]).size().reset_index()
+    sum_e = repo.groupby(['Condition', 'Replicate', 'Reported']).size().to_frame()
+    print(sum_e)
+    assert False
     sum_e = sum_e.values
     space = 0.3
     conditions = np.unique(sum_e[:, 0])

@@ -162,7 +162,7 @@ def fwhm(y, frac=2):
         return np.nan
 
 
-def als(y, lam=10, p=0.5, niter=50, pl=False, fr=75):
+def als(y, lam=10, p=0.5, niter=50, pl=False):
     """
     p for asymmetry and λ for smoothness.
     generally 0.001 ≤ p ≤ 0.1

@@ -463,15 +463,6 @@ def extract_inte(df, mode, q=72, norm=False, split_cmplx=False):
         df = io.explode(df=df, lst_cols=["CMPLX"])
     df["pksINT"] = df.apply(lambda x: extract_local_peak(x, q, mode, norm), axis=1)
     vals = list(map("{0}".format, list(range(1, (2 * q) + 1))))
-    # use dict to avoid duplicates, smooth raw profiles
-    if mode == 'abu':
-        print(df)
-        assert False
-        ll = dict(zip(df['ID'], df['pksINT']))
-        ll = {k: st.als(np.array(v), niter=50) for k, v in ll.items()}
-        df['pksINT'] = df['ID'].map(ll)
-        print(df['pksINT'])
-    # if q is less than length
     if q > 72 / 2:
         vals = list(map("{0}".format, list(range(1, q + 1))))
     df[vals] = pd.DataFrame(df.pksINT.values.tolist(), index=df.index)
@@ -490,10 +481,10 @@ def differential_(fl, mode, ids):
     """
     df = pd.read_csv(fl, sep="\t")
     if mode == "abu":
-        combined, vals = extract_inte(df, mode, norm=False, q=8)
+        combined, vals = extract_inte(df, mode, norm=False)
     elif mode == "asm":
-        combined, vals = extract_inte(df, mode, norm=False, q=8)
-    allprot, allcmplx = [], []
+        combined, vals = extract_inte(df, mode, norm=False)
+    dif_prot, dif_cmplx = [], []
     for cnd in ids.keys():
         if cnd != "Ctrl":
             tmp = combined[combined["COND"].isin(["Ctrl", cnd])]
@@ -503,13 +494,13 @@ def differential_(fl, mode, ids):
             # use the value i.e short_name in sample_ids.txt
             prot["Condition"] = ids[cnd]
             cmplx["Condition"] = ids[cnd]
-            allprot.append(prot)
-            allcmplx.append(cmplx)
-    allprot = pd.concat(allprot)
-    allcmplx = pd.concat(allcmplx)
-    allcmplx.add_prefix(mode)
-    allprot.add_prefix(mode)
-    return allcmplx, allprot
+            dif_prot.append(prot)
+            dif_cmplx.append(cmplx)
+    dif_prot = pd.concat(dif_prot)
+    dif_cmplx = pd.concat(dif_cmplx)
+    dif_cmplx.add_prefix(mode)
+    dif_prot.add_prefix(mode)
+    return dif_cmplx, dif_prot
 
 
 def average_stoichiometry(stoi_dict):
@@ -739,43 +730,19 @@ def create_ppi_report(infile="ComplexReport.txt", outfile="PPIReport.txt"):
     io.wrout(outf, outfile, header)
 
 
-def xtract_diff(row, thr=0.25):
+def assembled(df, thr=0.3):
     """
-    add qualitative column to the dataframe
-    PB4DEX_x == abundance diff
-    PB4DEX_y == assembly state difference
+    test for number of positive to assign global assembly state for exp
     """
-    # use 0.25 as threshold
-    if row["PB4DEX_x"] < thr and row["PB4DEX_y"] < thr:
-        return "No regulation"
-    elif row["PB4DEX_y"] > 0.9 and row["PB4DEX_x"] > 0.9:
-        return "Both"
+    y = df[df['Is Complex'] == 'Positive'].shape[0]
+    if y / df.shape[0] >= thr:
+        return 'Positive'
     else:
-        if row["PB4DEX_x"] > row["PB4DEX_y"]:
-            return "Abundance"
-        else:
-            return "Assembly state"
+        return 'Negative'
 
 
 def runner(infile, sample, outf, temp):
     """
-    args
-    0 combined_file,
-    1 outfolder,
-    2 score for missing proteins,
-    3 weight for prediction in combined score
-
-    single protein parameters
-    desi thresholds (list)
-
-    weight for single protein scoring
-    desi weights()
-
-    group by complex first => complex level
-    then by id => protein centric
-    then score each condition within that
-    return to condition level with intra complex scores and extra complex score
-    and then baysean on differential
     """
     if not os.path.isdir(outf):
         os.makedirs(outf)
@@ -789,49 +756,42 @@ def runner(infile, sample, outf, temp):
     create_ppi_report(infile=complex_report_out, outfile=ppi_report_out)
     if len(list(ids.keys())) == 1:
         return True
-    abu_cmplx, abu_prot = differential_(infile, "abu", ids)
-    asm_cmplx, asm_prot = differential_(infile, "asm", ids)
-    allcmplx = pd.merge(abu_cmplx, asm_cmplx,
-                        on=["ID", "Condition"],
-                        how="outer"
-                        )
-    allprot = pd.merge(abu_prot, asm_prot, on=["ID", "Condition"], how="outer")
-    allcmplx["Type"] = allcmplx.apply(xtract_diff, axis=1)
-    allprot["Type"] = allprot.apply(xtract_diff, axis=1)
+    dif_cmplx, dif_prot = differential_(infile, "abu", ids)
     complex_report_out = pd.read_csv(complex_report_out, sep="\t")
     complex_report_out = complex_report_out[
         ["Condition", "Replicate", "Is Complex", "ComplexID", "Members"]
     ]
     # remove single prot accession i.e single ID
-    allcmplx = allcmplx[~allcmplx["ID"].isin(allprot["ID"])]
+    dif_cmplx = dif_cmplx[~dif_cmplx["ID"].isin(dif_prot["ID"])]
     # this will duplicate the entry
-    allcmplx = pd.merge(
+    dif_cmplx = pd.merge(
         complex_report_out,
-        allcmplx,
+        dif_cmplx,
         left_on=["ComplexID", "Condition"],
         right_on=["ID", "Condition"],
     )
-    allcmplx.drop_duplicates(
+    # need to check if assembled in any condition
+    ex = dif_cmplx.groupby(['ComplexID']).apply(assembled).reset_index()
+    ex = dict(zip(list(ex['ComplexID']), list(ex[0])))
+    dif_cmplx['Is Complex'] = dif_cmplx['ComplexID'].map(ex)
+    dif_cmplx.drop_duplicates(
         subset=["Condition", "ComplexID"], keep="first", inplace=True
     )
     nwnm = {
-        "PB4DEX_x": "Probability_differential_abundance",
-        "LGMLLHN_x": "Abundance_log_marginal_likelihood_null",
-        "LGMLLHA_x": "Abundance_log_marginal_likelihood_alternative",
-        "PB4DEX_y": "Probability_differential_assembly_state",
-        "LGMLLHN_y": "Assembly_log_marginal_likelihood_null",
-        "LGMLLHA_y": "Assembly_log_marginal_likelihood_alternative",
+        "PB4DEX": "Probability_differential_abundance",
+        "LGMLLHN": "Abundance_log_marginal_likelihood_null",
+        "LGMLLHA": "Abundance_log_marginal_likelihood_alternative",
     }
-    allcmplx.rename(columns=nwnm, inplace=True)
-    allcmplx.rename(columns={"ID": "ComplexID"}, inplace=True)
-    allcmplx.to_csv(
+    dif_cmplx.rename(columns=nwnm, inplace=True)
+    dif_cmplx.rename(columns={"ID": "ComplexID"}, inplace=True)
+    dif_cmplx.to_csv(
         os.path.join(outf, "DifferentialComplexReport.txt"),
         sep="\t",
         index=False
     )
-    allprot.rename(columns=nwnm, inplace=True)
-    allprot.rename(columns={"ID": "GeneName"}, inplace=True)
-    allprot.to_csv(
+    dif_prot.rename(columns=nwnm, inplace=True)
+    dif_prot.rename(columns={"ID": "GeneName"}, inplace=True)
+    dif_prot.to_csv(
         os.path.join(outf, "DifferentialProteinReport.txt"),
         sep="\t",
         index=False
