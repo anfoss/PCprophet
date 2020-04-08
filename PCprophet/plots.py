@@ -1,13 +1,10 @@
 import os
-from itertools import combinations
 import matplotlib.pyplot as plt
-import matplotlib
 import networkx as nx
 import igraph as ig
 import pandas as pd
 import numpy as np
 
-import PCprophet.io_ as io
 import PCprophet.stats_ as st
 
 
@@ -57,16 +54,17 @@ def plot_repl_prof(filt, fold, cols):
     plot profile of protein across groups
     """
     def plot_single(axrow, filt, v, csfont):
-        filt2 = filt[filt['REPL']==v]
-        pk = np.median(filt2["reSEL"].values)
+        filt2 = filt[filt['REPL'] == v]
+        # pk = np.median(filt2["reSEL"].values)
         fractions = [int(x) for x in range(1, len(filt2["reINT"].iloc[0]) + 1)]
         axrow.grid(color="grey", linestyle="--", linewidth=0.25, alpha=0.5)
         for index, row in filt2.iterrows():
             axrow.plot(
                 fractions, row["reINT"], "-", lw=1, label=str(row["ID"]),
             )
-        if np.median(filt2["P"].values >= 0.5):
-            axrow.axvspan(pk - 3, pk + 3, color="grey", alpha=0.2)
+        # remove highlight for peak area of positive
+        # if np.median(filt2["P"].values >= 0.5):
+        #     axrow.axvspan(pk - 3, pk + 3, color="grey", alpha=0.2)
         axrow.set_ylabel("Rescaled intensity", fontsize=9, **csfont)
 
     csfont = {"fontname": "sans-serif"}
@@ -76,11 +74,11 @@ def plot_repl_prof(filt, fold, cols):
     plt.rcParams["grid.linewidth"] = 0.5
     repl = set(filt['REPL'])
     fig, axes = plt.subplots(len(set(repl)),
-                figsize=(9, 9),
-                facecolor="white",
-                sharex=True,
-                )
-    if len(repl)==1:
+                             figsize=(9, 9),
+                             facecolor="white",
+                             sharex=True,
+                             )
+    if len(repl) == 1:
         axes = [axes]
     for i, row in enumerate(axes):
         plot_single(row, filt, list(repl)[i], csfont)
@@ -254,14 +252,11 @@ def plot_recall(out_fold):
     repo = os.path.join(out_fold, "ComplexReport.txt")
     repo = pd.read_csv(repo, sep="\t")
     repo = repo[repo["Is Complex"] == "Positive"]
-    sum_e = repo.groupby(['Condition', 'Replicate', 'Reported']).size().to_frame()
-    print(sum_e)
-    assert False
+    sum_e = repo.groupby(['Condition', 'Replicate', 'Reported']).size().to_frame().reset_index()
     sum_e = sum_e.values
     space = 0.3
     conditions = np.unique(sum_e[:, 0])
     repl = np.unique(sum_e[:, 1])
-    n = len(repl)
     width = (1 - space) / (len(repl))
     # Create a set of bars at each position
     for i, cond in enumerate(repl):
@@ -275,7 +270,7 @@ def plot_recall(out_fold):
             pos,
             rep,
             width=width,
-            color="#ff7f0e",
+            color="#3C5488B2",
             edgecolor="black",
             linewidth=1,
             label="Reported",
@@ -285,7 +280,7 @@ def plot_recall(out_fold):
             nov,
             width=width,
             bottom=rep,
-            color="#1f77b4",
+            color="#4DBBD5B2",
             edgecolor="black",
             linewidth=1,
             label="Novel",
@@ -321,10 +316,8 @@ def runner(tmp_fold, out_fold, target_fdr, sid):
     plots
     1) combined fdr
     2) recall from db/positive
-    3) Positive Reported
-    ø4) Possitive Novel
-    5) negative Reported
-    6) Apex plot => positive negative across the entire sec
+    3) Profile plots across all replicates
+    4) network combined from all conditions
     """
     outf = os.path.join(out_fold, "Plots")
     if not os.path.isdir(outf):
@@ -332,5 +325,5 @@ def runner(tmp_fold, out_fold, target_fdr, sid):
     plot_fdr(tmp_fold, out_fold, target_fdr)
     plot_recall(out_fold)
     comb = os.path.join(tmp_fold, "combined.txt")
-    plot_positive(comb, sid, pl_dir=outf)
+    # plot_positive(comb, sid, pl_dir=outf)
     plot_network(out_fold, "PPIreport.txt")
