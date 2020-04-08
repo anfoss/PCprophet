@@ -2,7 +2,7 @@ import re
 import sys
 import os
 import numpy as np
-from scipy import stats
+import scipy.signal as signal
 import pandas as pd
 from scipy.ndimage import uniform_filter
 
@@ -99,15 +99,14 @@ class ComplexProfile(object):
         """
         vectorized correlation between pairs vectors with sliding window
         """
-        tmp = []
         a, b = pairs[0].get_inte(), pairs[1].get_inte()
         # a,b are input arrays; W is window length
 
         am = uniform_filter(a.astype(float), W)
         bm = uniform_filter(b.astype(float), W)
 
-        amc = am[W // 2 : -W // 2 + 1]
-        bmc = bm[W // 2 : -W // 2 + 1]
+        amc = am[W // 2: -W // 2 + 1]
+        bmc = bm[W // 2: -W // 2 + 1]
 
         da = a[:, None] - amc
         db = b[:, None] - bmc
@@ -178,9 +177,16 @@ class ComplexProfile(object):
         width = []
         for prot in self.members:
             peak = int(self.pks_ali[prot.get_acc()])
-            prot_peak = prot.get_inte()[(peak - q) : (peak + q)]
-            prot_fwhm = st.fwhm(list(prot_peak))
-            width.append(prot_fwhm)
+            prot_peak = prot.get_inte()[(peak - q): (peak + q)]
+            # prot_fwhm = st.fwhm(prot_peak)
+            prot_fwhm = signal.peak_widths(x=prot_peak,
+                                           peaks=[q],
+                                           rel_height=0.5
+                                           )[0][0]
+            if prot_fwhm:
+                width.append(round(prot_fwhm))
+            else:
+                width.append(round(np.nan))
         self.width = np.mean(width)
 
     def create_row(self):

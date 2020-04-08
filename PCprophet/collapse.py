@@ -1,17 +1,11 @@
 import os
-import sys
-import re
 from functools import reduce
-from itertools import combinations
 import numpy as np
 from scipy import interpolate
 import pandas as pd
 import networkx as nx
-from sklearn.linear_model import LinearRegression
-
 
 import PCprophet.io_ as io
-import PCprophet.stats_ as st
 import PCprophet.go_fdr as go_fdr
 from PCprophet.exceptions import NotImplementedError
 
@@ -112,7 +106,7 @@ class ProphetExperiment(object):
             try:
                 for k2 in k.split(" "):
                     mw2[k2] = mw[k].replace(",", "")
-            except AttributeError as e:
+            except AttributeError:
                 pass
         self.mw = mw2
 
@@ -121,11 +115,9 @@ class ProphetExperiment(object):
         return a network where every edge between two nodes represents
         jaccard similarity between members > ov
         """
-
         def min_over(l1, l2):
             inter = len(set(l1).intersection(set(l2)))
             return inter / min(len(l1), len(l2))
-
         m2 = []
         m = [k.split("#") for k in l]
         for x in m:
@@ -169,8 +161,7 @@ class ProphetExperiment(object):
         y, x = cm["sub"].values, cm["SEL"].values
         z = np.polyfit(x, y, 2)
         p = np.poly1d(z)
-        peak_dic = dict(zip(list(peaks2cmplx.index), list(peaks2cmplx["SEL"])))
-        # actually from here can already get the diff
+        # peak_dic = dict(zip(list(peaks2cmplx.index), list(peaks2cmplx["SEL"])))
         theor = {k: p(k) for k in list(range(1, 73))}
         return theor, peaks2cmplx["SEL"]
 
@@ -183,7 +174,6 @@ class ProphetExperiment(object):
         simil_graph = self.similarity_graph(hypo["MB"], hypo.index, ov=0.5)
         # we need to remove nodes after merging together
         rm = []
-        # we need to check the peak position too?
         # better to get db positive here
         lr, peaks = None, None
         if mode == "eCAL":
@@ -202,12 +192,12 @@ class ProphetExperiment(object):
                     tokeep = self.collapse_largest(totest)
                 elif mode == "eCAL":
                     raise NotImplementedError
-                rm = np.setdiff1d(np.array(totest.index), np.array(tokeep))
-            except KeyError as e:
+                # idxs to remove
+                tm = np.setdiff1d(np.array(totest.index), np.array(tokeep))
+                rm.extend(list(tm))
+            except KeyError:
                 # this is always gonna happen because we remove in place
                 pass
-        # we remove the positive that we are not going to test in differential
-        # negatives do not matter
         self.complex_c.drop(index=rm, inplace=True)
 
     def collapse_largest(self, totest):
@@ -233,24 +223,6 @@ class ProphetExperiment(object):
         tmp.replace(self.cal, inplace=True)
         diff = (totest["w"] - tmp).abs()
         return diff.idxmin()
-
-    def collapse_empcal(self, totest, lr, sel):
-        """
-        collapse to empirical calibration using curve fitted with
-        average nr subunits and fraction
-        need to collect the same nr of fraction and
-        """
-        raise NotImplementedError
-        # TODO need to fix this
-        # totest['sub'] = totest['MB'].apply(lambda x: len(x.split('#')))
-        # totest['peak'] = sel
-        # pk = list(totest['peak'])
-        # subs = list(totest['sub'])
-        # print(pk)
-        # print(lr)
-        # [print(lr[x]) for x in pk]
-        # totest['d'] = totest.apply(lambda x: abs(lr[x['peaks'] - row['sub']]))
-        # print(totest['d'])
 
     def calc_fdr(self, target_fdr):
         """
@@ -321,7 +293,6 @@ class MultiExperiment(object):
         exp3 A-B-C
         keep ABC as most frequent combination of subunits
         """
-        annot = 0
         allhypo = pd.concat([exp.get_hypo() for exp in self.allexps])
         # this is only for later splitting to make sure there is no other $
         names = list(allhypo.index + "$" + allhypo["CREP"])
@@ -338,7 +309,7 @@ class MultiExperiment(object):
                 tmp = allhypo[allhypo["nm"].isin(torename)]
                 tmp["ID"] = "cmplx__" + str(count)
                 tosub.append(tmp)
-            except KeyError as e:
+            except KeyError:
                 # remove inplace faster to catch than test has_node
                 pass
             finally:
@@ -483,7 +454,7 @@ def runner(tmp_, ids, cal, mw, fdr, mode):
     try:
         if os.path.isfile(cal):
             cal = calc_calibration(cal)
-    except TypeError as e:
+    except TypeError:
         pass
     allexps = MultiExperiment()
     for smpl in dir_:

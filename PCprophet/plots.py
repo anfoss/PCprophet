@@ -325,5 +325,5 @@ def runner(tmp_fold, out_fold, target_fdr, sid):
     plot_fdr(tmp_fold, out_fold, target_fdr)
     plot_recall(out_fold)
     comb = os.path.join(tmp_fold, "combined.txt")
-    # plot_positive(comb, sid, pl_dir=outf)
+    plot_positive(comb, sid, pl_dir=outf)
     plot_network(out_fold, "PPIreport.txt")

@@ -6,6 +6,8 @@ import scipy.signal as signal_processing
 from scipy import sparse
 from scipy.sparse.linalg import spsolve
 
+from PCprophet.io_ import timeit
+
 
 # basic stat
 def mean(numbers, as_decimal=False):
@@ -146,20 +148,17 @@ def impute_namean(ls):
     return ls
 
 
-def fwhm(y, frac=2):
-    """
-    calculate full width half max of peak within two fractions
-    """
-    if not y:
-        return np.nan
-    y = np.array(y)
-    x = [x for x in range(1, (len(y) + 1))]
-    d = y - (max(y) / frac)
-    indexes = np.where(d > 0)[0]
-    try:
-        return abs(x[indexes[-1]] - x[indexes[0]])
-    except IndexError:
-        return np.nan
+def fwhm(y):
+    interp = lambda x, y, i, half: x[i] + (x[i+1] - x[i]) * ((half - y[i]) / (y[i+1] - y[i]))
+    x = range(1, len(y)+1)
+    half = max(y)/2.0
+    signs = np.sign(np.add(y, -half))
+    zero_crossings = (signs[0:-2] != signs[1:-1])
+    zero_crossings_i = np.where(zero_crossings)[0]
+    print(zero_crossings, zero_crossings_i)
+    left = interp(x, y, zero_crossings_i[0], half)
+    right = interp(x, y, zero_crossings_i[1], half)
+    return round(right - left)
 
 
 def als(y, lam=10, p=0.5, niter=50, pl=False):

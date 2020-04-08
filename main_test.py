@@ -215,21 +215,21 @@ def main():
     #     p.join()
     # else:
     #     [preprocessing(infile, config) for infile in files]
-    # collapse.runner(
-    #     config['GLOBAL']['temp'],
-    #     config['GLOBAL']['sid'],
-    #     config['GLOBAL']['cal'],
-    #     config['GLOBAL']['mw'],
-    #     config['POSTPROCESS']['fdr'],
-    #     config['POSTPROCESS']['collapse_mode'],
-    # )
-    # combined_file = os.path.join(config['GLOBAL']['temp'], 'combined.txt')
-    # differential.runner(
-    #     combined_file,
-    #     config['GLOBAL']['sid'],
-    #     config['GLOBAL']['Output'],
-    #     config['GLOBAL']['temp']
-    # )
+    collapse.runner(
+        config['GLOBAL']['temp'],
+        config['GLOBAL']['sid'],
+        config['GLOBAL']['cal'],
+        config['GLOBAL']['mw'],
+        config['POSTPROCESS']['fdr'],
+        config['POSTPROCESS']['collapse_mode'],
+    )
+    combined_file = os.path.join(config['GLOBAL']['temp'], 'combined.txt')
+    differential.runner(
+        combined_file,
+        config['GLOBAL']['sid'],
+        config['GLOBAL']['Output'],
+        config['GLOBAL']['temp']
+    )
     plots.runner(
         config['GLOBAL']['temp'],
         config['GLOBAL']['Output'],
