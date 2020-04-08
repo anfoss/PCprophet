@@ -193,7 +193,7 @@ One folder for each __short_id__ will be generated. Within that folder all the p
 
 ### Import results into Cytoscape
 
-Both __PPIReport.txt__ and __DifferentialProteinReport.txt__ are fully compatible with Cytoscape import without the need for any additional formatting
+Both __PPIReport.txt__ and  __ppi_network.GraphML__ are fully compatible with Cytoscape import without the need for any additional formatting. For additional mapping __DifferentialProteinReport.txt__ can be used to visualize which proteins are differential in the network and which complexes are perturbed
 
 ### PCProphet specific exceptions and errors
 
