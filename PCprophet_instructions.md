@@ -13,7 +13,7 @@ __ID__ : Uniprot identifier, needs to be the second column
 Remaining columns needs to be ordered according to the fractionation scheme used. There is no strict requirement for column names apart from GN and ID, but they need to be ordered.
 All quantitation schemes commonly used in proteomics such as MS1 or MS2 ion-extracted chromatogram (XIC), spectral counts (SPCs) and TMT or SILAC ratios are supported.
 
-Examples of correct formatting are provided in the test_fract.txt data
+Examples of correct formatting are provided under test/ test_fract.txt data
 
 ### Parameter setup
 
