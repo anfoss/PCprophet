@@ -186,7 +186,7 @@ class ComplexProfile(object):
             if prot_fwhm:
                 width.append(round(prot_fwhm))
             else:
-                width.append(round(np.nan))
+                width.append(np.nan)
         self.width = np.mean(width)
 
     def create_row(self):
