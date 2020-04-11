@@ -178,7 +178,7 @@ class ComplexProfile(object):
         for prot in self.members:
             peak = int(self.pks_ali[prot.get_acc()])
             prot_peak = prot.get_inte()[(peak - q): (peak + q)]
-            prot_fwhm = st.fwhm(prot_peak)
+            prot_fwhm = st.fwhm(list(prot_peak))
             width.append(round(prot_fwhm))
         self.width = np.mean(width)
 
