@@ -41,7 +41,7 @@ This will get you a working copy of PCprophet into a folder called PCprophet
 ```
 git clone https://github.com/fossatiA/PCprophet PCprophet
 ```
-> **note** for the GUI version installtion of java is necessary
+> **note** for the GUI version installation of java is necessary
 
 ## Usage
 
@@ -67,7 +67,7 @@ Please read [CONTRIBUTE.md](https://github.com/fossatiA/PCprophet/blob/master/CO
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
+This project is licensed under the Modified BSD License - see the [LICENSE.md](LICENSE.md) file for details
 
 ## Acknowledgments
 
