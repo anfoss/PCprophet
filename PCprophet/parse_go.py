@@ -223,7 +223,7 @@ def combine_all(G, gaf, t):
         out.append(st.mean(k))
     # add to out the mean of the three Ontologies
     # TODO check mean or sum
-    out.append(st.mean(out))
+    out.append(sum(out))
     return "\t".join([str(x) for x in out])
 
 
