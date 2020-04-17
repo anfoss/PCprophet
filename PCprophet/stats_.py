@@ -163,7 +163,7 @@ def fwhm(y, frac=2):
     except IndexError as e:
         return np.nan
 
-        
+
 def als(y, lam=10, p=0.5, niter=50, pl=False):
     """
     p for asymmetry and λ for smoothness.

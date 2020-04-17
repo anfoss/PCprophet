@@ -211,6 +211,56 @@ Depending on the error raised different fixes are needed.
 
 * __Why in ComplexReport.txt the complexID has several complexes concatenated by # ?__ We are using the parsimony principle, thereby complexes for which there are not enough evidence (i.e with the same subunits identified across the experiment) are reported in the same complex group
 
+
+* __I want to search with several different FDR and collapse method but it took long time to generate the features__ The modular organization of PCprophet makes it easy to skip certain modules. If for example re run with FDR of 50%.
+- Open main.py in a text editor and go to the main () function.
+
+Here comment the preprocessing call out
+```
+def main():
+    config = create_config()
+    validate.InputTester(config['GLOBAL']['db'], 'db').test_file()
+    validate.InputTester(config['GLOBAL']['sid'], 'ids').test_file()
+    files = io.read_sample_ids(config['GLOBAL']['sid'])
+    files = [os.path.abspath(x) for x in files.keys()]
+    # if config['GLOBAL']['mult'] == 'True':
+    #     p = mult_proc.Pool(len(files))
+    #     preproc_conf=partial(preprocessing, config=config)
+    #     p.map(preproc_conf, files)
+    #     p.close()
+    #     p.join()
+    # else:
+    #     [preprocessing(infile, config) for infile in files]
+    collapse.runner(
+        config['GLOBAL']['temp'],
+        config['GLOBAL']['sid'],
+        config['GLOBAL']['cal'],
+        config['GLOBAL']['mw'],
+        config['POSTPROCESS']['fdr'],
+        config['POSTPROCESS']['collapse_mode'],
+    )
+    combined_file = os.path.join(config['GLOBAL']['temp'], 'combined.txt')
+    differential.runner(
+        combined_file,
+        config['GLOBAL']['sid'],
+        config['GLOBAL']['Output'],
+        config['GLOBAL']['temp']
+    )
+    plots.runner(
+        config['GLOBAL']['temp'],
+        config['GLOBAL']['Output'],
+        config['POSTPROCESS']['fdr'],
+        config['GLOBAL']['sid'],
+    )
+```
+and you are set for success, just run PCprophet as usual and specify the new fdr
+
+```
+python3 main.py -fdr 0.5
+
+```
+
+
 * __-CAL flag for collapsing returns an error__! Check that the format of the calibration file. __A correctly formatted calibration file will have the fraction first as integer and the molecular weight in KDa as integer__
 
 | | | |
