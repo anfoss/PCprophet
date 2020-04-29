@@ -5,7 +5,7 @@ Software toolkit for protein complex prediction and differential analysis of cof
 ## Getting Started
 
 These instructions will get you a copy of the project up and running on your local machine and how to test the compatibility with your current Python packages
-### Prerequisites
+### Dependencies
 
 * [Python >=3.4.x](https://www.python.org)
 * [Sklearn 0.20.3](https://pypi.org/project/sklearn/)
@@ -14,6 +14,14 @@ These instructions will get you a copy of the project up and running on your loc
 * [Scipy >1.1.0](https://www.scipy.org)
 * [Java v1.8](https://www.java.com)
 * [Igraph](https://igraph.org/python/)
+When installing the igraph package, please refer to the document online (https://igraph.org/python/doc/tutorial/install.html). Two other packages should be installed seperately as well, including cairo and py2cairo, for example in macOS using
+```
+brew install cairo
+```
+```
+brew install py2cairo
+```
+Then install the python-graph package.
 
 ### Installing
 
