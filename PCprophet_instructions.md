@@ -156,7 +156,7 @@ python3 main.py
 Parameters can be individually set, for example using an interaction network instead of a complex database
 
 ```
-python3 main.py -db myppi.txt -is_ppi True
+python3 main.py -db myppi.txt -ppi True
 ```
 
 
