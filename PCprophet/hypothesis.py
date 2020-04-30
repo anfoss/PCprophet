@@ -137,6 +137,7 @@ def runner(infile, hypothesis, use_fr):
         nm = os.path.join(base, "hypo.txt")
         io.wrout(hypo, nm, ["ID", "MB", "FT"], is_hyp=True)
         df_s.to_csv(os.path.join(base, "splitted_transf.txt"), sep="\t")
+        return True
     else:
         pass
 

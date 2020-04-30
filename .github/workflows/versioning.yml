@@ -1,15 +1,19 @@
 name: Build and Lint
 
-on: [push]
+on:
+  release:
+    types: [created]
+
 
 jobs:
   build:
-
-    runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.7, 3.8]
-
+        os: [macos-latest, ubuntu-latest, windows-latest]
+    runs-on: $\{{ matrix.os }}
+    strategy:
+      matrix:
+        python-version: [3.6, 3.7, 3.8]
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
@@ -22,3 +26,7 @@ jobs:
         pip install -r requirements.txt
     - name: Black Code Formatter
       uses: lgeiger/black-action@v1.0.1
+    - name: Test with pytest
+      run: |
+        pip install pytest
+        pytest

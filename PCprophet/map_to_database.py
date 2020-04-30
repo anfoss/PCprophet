@@ -117,3 +117,4 @@ def runner(infile, db, is_ppi, use_fr):
     nm = os.path.join(base, "ann_cmplx.txt")
     # nm = io.resource_path(nm)
     io.wrout(out, nm, ["ID", "CMPLT", "MB", "FT"])
+    return True

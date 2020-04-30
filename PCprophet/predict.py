@@ -42,3 +42,4 @@ def runner(base, model="./PCprophet/rf_equal.clf"):
     df = df[["ID", "POS", "NEG", "IS_CMPLX"]]
     outfile = os.path.join(base, "rf.txt")
     df.to_csv(outfile, sep="\t", index=False)
+    return True

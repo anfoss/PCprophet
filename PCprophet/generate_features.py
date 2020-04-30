@@ -388,3 +388,4 @@ def runner(base, go_obo, tsp_go):
     peaklist_path = os.path.join(base, "peak_list.txt")
     # peaklist_path = peaklist_path
     io.wrout(pks, peaklist_path, ["MB", "ID", "PKS", "SEL"])
+    return True

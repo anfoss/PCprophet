@@ -492,3 +492,4 @@ def runner(tmp_, ids, cal, mw, fdr, mode):
     final = allexps.protein_centric_combine()
     outname = os.path.join(tmp_, "combined.txt")
     final.to_csv(outname, sep="\t", index=False)
+    return True
