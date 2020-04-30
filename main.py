@@ -134,8 +134,8 @@ def create_config():
         help='Multi processing',
         dest='multi',
         action='store',
-        default='True',
-        choices = ['True', 'False']
+        default='False',
+        choices=['True', 'False']
     )
     parser.add_argument('-w', dest='weight_pred', action='store', default=1, type=float)
     args = parser.parse_args()
