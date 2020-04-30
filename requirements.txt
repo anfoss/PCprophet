@@ -2,3 +2,5 @@ scipy==0.0
 pandas==0.25.3
 sklearn==0.0
 networkx==2.4
+black
+flake
