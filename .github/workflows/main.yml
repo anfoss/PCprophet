@@ -1,4 +1,4 @@
-name: PCprophet
+name: Build and Lint
 
 on: [push]
 
