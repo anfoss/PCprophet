@@ -47,7 +47,7 @@ This will get you a working copy of PCprophet into a folder called PCprophet
 - Clone the repo
 
 ```
-git clone https://github.com/fossatiA/PCprophet PCprophet
+git-lfs clone https://github.com/fossatiA/PCprophet PCprophet
 ```
 > **note** for the GUI version installtion of java is necessary
 
