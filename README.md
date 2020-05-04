@@ -49,7 +49,7 @@ This will get you a working copy of PCprophet into a folder called PCprophet
 ```
 git-lfs clone https://github.com/fossatiA/PCprophet PCprophet
 ```
-> **note** for the GUI version installtion of java is necessary
+> **note** for the GUI version installation of java is necessary
 
 ## Usage
 
@@ -58,7 +58,6 @@ For usage of PCprophet refers to the [PCprophet_instructions.md](https://github.
 
 ## Built With
 
-* [Pynstaller](https://www.pyinstaller.org) - Package builder
 * [NetBeans](https://netbeans.org/) - GUI builder
 
 
