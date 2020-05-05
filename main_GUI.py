@@ -71,6 +71,7 @@ def preprocessing(infile, config):
     predict.runner(tmp_folder)
     return True
 
+
 def main():
     config = create_config()
     validate.InputTester(config['GLOBAL']['db'], 'db').test_file()
@@ -97,12 +98,12 @@ def main():
     differential.runner(
         combined_file,
         config['GLOBAL']['sid'],
-        config['GLOBAL']['Output'],
+        config['GLOBAL']['output'],
         config['GLOBAL']['temp']
     )
     plots.runner(
         config['GLOBAL']['temp'],
-        config['GLOBAL']['Output'],
+        config['GLOBAL']['output'],
         config['POSTPROCESS']['fdr'],
         config['GLOBAL']['sid'],
     )

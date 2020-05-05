@@ -61,7 +61,7 @@ def create_config():
         action='store',
     )
     parser.add_argument(
-        '-Output',
+        '-output',
         help='outfile folder path',
         dest='out_folder',
         default=r'./Output',
@@ -147,7 +147,7 @@ def create_config():
         'sid': args.sample_ids,
         'go_obo': io.resource_path('go-basic.obo'),
         'sp_go': io.resource_path('tmp_GO_sp_only.txt'),
-        'Output': args.out_folder,
+        'output': args.out_folder,
         'cal': args.calibration,
         'mw': args.mwuni,
         'temp': r'./tmp',
@@ -228,12 +228,12 @@ def main():
     differential.runner(
         combined_file,
         config['GLOBAL']['sid'],
-        config['GLOBAL']['Output'],
+        config['GLOBAL']['output'],
         config['GLOBAL']['temp']
     )
     plots.runner(
         config['GLOBAL']['temp'],
-        config['GLOBAL']['Output'],
+        config['GLOBAL']['output'],
         config['POSTPROCESS']['fdr'],
         config['GLOBAL']['sid'],
     )
