@@ -46,7 +46,7 @@ In case of PPI database the format needs to be
 |D    |A    |
 |C    |E    |
 
-In this case a Markov clustering is first performed to generate putative complexes which are then used for FDR control. PPI derived complexes are characterize by the identifier ppi__nr where nr stands for the cluster number from the Markov cluster
+In this case a Markov clustering is first performed to generate putative complexes which are then used for FDR control. PPI derived complexes are characterized by the identifier ppi__nr where nr stands for the cluster number from the Markov cluster
 
 ##### Pre-processing parameters:
 
@@ -156,7 +156,7 @@ python3 main.py
 Parameters can be individually set, for example using an interaction network instead of a complex database
 
 ```
-python3 main.py -db myppi.txt -ppi True
+python3 main.py -db myppi.txt -is_ppi True
 ```
 
 
