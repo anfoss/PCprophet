@@ -491,9 +491,9 @@ def differential_(fl, mode, ids):
             prot = score_complexes(tmp, valcols=vals, mode="protein")
             tmp = combined[combined["COND"].isin(["Ctrl", cnd])]
             cmplx = score_complexes(tmp, valcols=vals, mode="cmplx")
-            # use the value i.e short_name in sample_ids.txt
-            prot["Condition"] = ids[cnd]
-            cmplx["Condition"] = ids[cnd]
+            # use the short_name in sample_ids.txt
+            prot["Sample_ID"] = ids[cnd]
+            cmplx["Sample_ID"] = ids[cnd]
             dif_prot.append(prot)
             dif_cmplx.append(cmplx)
     dif_prot = pd.concat(dif_prot)
@@ -635,7 +635,7 @@ def create_complex_report(infile, sto, sid, outfile="ComplexReport.txt"):
         mrg.replace({"MW": cal}, inplace=True)
     else:
         mrg["MW"] = "0"
-    mrg['Sample ID'] = mrg['COND'].map(ids)
+    mrg['Sample_ID'] = mrg['COND'].map(ids)
     header = [
         "ComplexID",
         "Condition",
@@ -650,7 +650,7 @@ def create_complex_report(infile, sto, sid, outfile="ComplexReport.txt"):
         "Is Complex",
         "Reported",
         "Estimated MW",
-        "Sample ID"
+        "Sample_ID"
     ]
     # now rename all the columns
     mrg = mrg.rename(dict(zip(list(mrg), header)), axis=1)
@@ -760,7 +760,7 @@ def runner(infile, sample, outf, temp):
     dif_cmplx, dif_prot = differential_(infile, "abu", ids)
     complex_report_out = pd.read_csv(complex_report_out, sep="\t")
     complex_report_out = complex_report_out[
-        ["Condition", "Replicate", "Is Complex", "ComplexID", "Members"]
+        ["Sample_ID", "Replicate", "Is Complex", "ComplexID", "Members"]
     ]
     # remove single prot accession i.e single ID
     dif_cmplx = dif_cmplx[~dif_cmplx["ID"].isin(dif_prot["ID"])]
@@ -768,15 +768,15 @@ def runner(infile, sample, outf, temp):
     dif_cmplx = pd.merge(
         complex_report_out,
         dif_cmplx,
-        left_on=["ComplexID", "Condition"],
-        right_on=["ID", "Condition"],
+        left_on=["ComplexID", "Sample_ID"],
+        right_on=["ID", "Sample_ID"],
     )
     # need to check if assembled in any condition
     ex = dif_cmplx.groupby(['ComplexID']).apply(assembled).reset_index()
     ex = dict(zip(list(ex['ComplexID']), list(ex[0])))
     dif_cmplx['Is Complex'] = dif_cmplx['ComplexID'].map(ex)
     dif_cmplx.drop_duplicates(
-        subset=["Condition", "ComplexID"], keep="first", inplace=True
+        subset=["Sample_ID", "ComplexID"], keep="first", inplace=True
     )
     nwnm = {
         "PB4DEX": "Probability_differential_abundance",
