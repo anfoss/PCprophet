@@ -635,7 +635,7 @@ def create_complex_report(infile, sto, sid, outfile="ComplexReport.txt"):
         mrg.replace({"MW": cal}, inplace=True)
     else:
         mrg["MW"] = "0"
-    mrg.replace({"COND": ids}, inplace=True)
+    mrg['Sample ID'] = mrg['COND'].map(ids)
     header = [
         "ComplexID",
         "Condition",
@@ -650,6 +650,7 @@ def create_complex_report(infile, sto, sid, outfile="ComplexReport.txt"):
         "Is Complex",
         "Reported",
         "Estimated MW",
+        "Sample ID"
     ]
     # now rename all the columns
     mrg = mrg.rename(dict(zip(list(mrg), header)), axis=1)

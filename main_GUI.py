@@ -50,27 +50,26 @@ def create_config():
 
 def preprocessing(infile, config):
 
-     validate.InputTester(infile, 'in').test_file()
-     map_to_database.runner(
-         infile=infile,
-         db=config['GLOBAL']['db'],
-         is_ppi=config['PREPROCESS']['is_ppi'],
-         use_fr=config['PREPROCESS']['all_fract'],
-         )
-     hypothesis.runner(
-         infile=infile,
-         hypothesis=config['PREPROCESS']['merge'],
-         use_fr=config['PREPROCESS']['all_fract'],
-         )
-     # sample specific folder
-     tmp_folder = io.file2folder(infile, prefix=config['GLOBAL']['temp'])
-     merge.runner(base=tmp_folder, mergemode=config['PREPROCESS']['merge'])
-     generate_features.runner(
-         tmp_folder, config['GLOBAL']['go_obo'], config['GLOBAL']['sp_go']
-         )
-     predict.runner(tmp_folder)
-     return True
-
+    validate.InputTester(infile, 'in').test_file()
+    map_to_database.runner(
+     infile=infile,
+     db=config['GLOBAL']['db'],
+     is_ppi=config['PREPROCESS']['is_ppi'],
+     use_fr=config['PREPROCESS']['all_fract'],
+     )
+    hypothesis.runner(
+     infile=infile,
+     hypothesis=config['PREPROCESS']['merge'],
+     use_fr=config['PREPROCESS']['all_fract'],
+     )
+    # sample specific folder
+    tmp_folder = io.file2folder(infile, prefix=config['GLOBAL']['temp'])
+    merge.runner(base=tmp_folder, mergemode=config['PREPROCESS']['merge'])
+    generate_features.runner(
+     tmp_folder, config['GLOBAL']['go_obo'], config['GLOBAL']['sp_go']
+     )
+    predict.runner(tmp_folder)
+    return True
 
 def main():
     config = create_config()

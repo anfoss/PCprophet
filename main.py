@@ -210,7 +210,7 @@ def main():
     files = [os.path.abspath(x) for x in files.keys()]
     if config['GLOBAL']['mult'] == 'True':
         p = mult_proc.Pool(len(files))
-        preproc_conf=partial(preprocessing, config=config)
+        preproc_conf = partial(preprocessing, config=config)
         p.map(preproc_conf, files)
         p.close()
         p.join()
