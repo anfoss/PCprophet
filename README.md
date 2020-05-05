@@ -12,16 +12,6 @@ These instructions will get you a copy of the project up and running on your loc
 * [NetworkX v2.4](https://networkx.github.io)
 * [Pandas >0.23](https://pandas.pydata.org)
 * [Scipy >1.1.0](https://www.scipy.org)
-* [Java v1.8](https://www.java.com)
-* [Igraph](https://igraph.org/python/)
-When installing the igraph package, please refer to the document online (https://igraph.org/python/doc/tutorial/install.html). Two other packages should be installed seperately as well, including cairo and py2cairo, for example in macOS using
-```
-brew install cairo
-```
-```
-brew install py2cairo
-```
-Then install the python-graph package.
 
 ### Installing
 
@@ -40,25 +30,10 @@ This will get you a working copy of PCprophet into a folder called PCprophet
 
 > **note** for the command line version only Python3 and related package dependencies are necessary
 
-#### GUI version
-
-
-- Install Java v1.8
-- Clone the repo
-
-```
-git-lfs clone https://github.com/fossatiA/PCprophet PCprophet
-```
-> **note** for the GUI version installation of java is necessary
 
 ## Usage
 
 For usage of PCprophet refers to the [PCprophet_instructions.md](https://github.com/fossatiA/PCprophet/blob/master/PCprophet_instructions.md)
-
-
-## Built With
-
-* [NetBeans](https://netbeans.org/) - GUI builder
 
 
 ## Contributing
