@@ -83,7 +83,7 @@ def create_config():
         action='store',
     )
     parser.add_argument(
-        '-ppi',
+        '-is_ppi',
         help='is the -db a protein protein interaction database',
         dest='is_ppi',
         action='store',
@@ -99,7 +99,7 @@ def create_config():
     )
     parser.add_argument(
         '-ma',
-        help='merge usign all complexes or reference only',
+        help='merge using all complexes or reference only',
         dest='merge',
         action='store',
         choices=['all', 'reference'],
