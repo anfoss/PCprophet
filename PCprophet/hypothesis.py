@@ -130,7 +130,7 @@ def runner(infile, hypothesis, use_fr):
     """
     generate hypothesis from infile using all fract fractions and max hypo nr
     """
-    if hypothesis is "all":
+    if hypothesis == "all":
         print("Generating hypothesis for " + infile)
         hypo, df_s = collapse_prot(infile=infile, use=use_fr)
         base = io.file2folder(infile, prefix="./tmp/")
