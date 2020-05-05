@@ -480,7 +480,7 @@ def runner(tmp_, ids, cal, mw, fdr, mode):
             nm=exp_info[base],
             cal=cal,
         )
-        if mw is not "None":
+        if mw != "None":
             exp.add_mw(io.df2dict(mw, "Gene names", "Mass"))
         exp.complex_centric_combine()
         exp.calc_fdr(fdr)
