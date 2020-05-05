@@ -50,7 +50,7 @@ def create_config():
         help='protein complex database from CORUM or ppi network in STRING format',
         dest='database',
         action='store',
-        default='20190513_CORUMcoreComplexes.txt',
+        default='coreComplexes.txt',
     )
     # maybe better to add function for generating a dummy sample id?
     parser.add_argument(
