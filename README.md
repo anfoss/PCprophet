@@ -1,10 +1,10 @@
 # PCprophet
 
-Software toolkit for protein complex prediction and differential analysis of cofractionation mass spectrometry datasets
+The software toolkit for protein complex prediction and differential analysis of cofractionation mass spectrometry datasets.
 
 ## Getting Started
 
-These instructions will get you a copy of the project up and running on your local machine and how to test the compatibility with your current Python packages
+These instructions will guide you to obtain a copy of the project, to run on your local machine, and to test the compatibility with your current Python packages.
 ### Dependencies
 
 * [Python >=3.4.x](https://www.python.org)
@@ -15,25 +15,20 @@ These instructions will get you a copy of the project up and running on your loc
 
 ### Installing
 
-We recommend using [anaconda](https://www.anaconda.com) as it contains the majority of the required packages for PCprophet, while igraph needs to be installed separately [here](https://igraph.org/python/)
+We recommend using [anaconda](https://www.anaconda.com) as it contains the majority of the required packages for PCprophet, while igraph needs to be installed separately [here](https://igraph.org/python/).
 
 #### Command line version
 
-Ensure that you have installed the GitHub tool and 'git-lfs' command specifically for large file transfer. Please see [here](https://gist.github.com/derhuerst/1b15ff4652a867391f03) for installing GitHub and [here](https://help.github.com/en/github/managing-large-files/installing-git-large-file-storage) for installing 'git-lfs' command.
+Ensure that you have installed the GitHub tool and 'git-lfs' command specifically for large file transfer. Please see [here](https://gist.github.com/derhuerst/1b15ff4652a867391f03) for installing GitHub and [here](https://help.github.com/en/github/managing-large-files/installing-git-large-file-storage) for the installing 'git-lfs' command.
 
 ```
 git-lfs clone https://github.com/fossatiA/PCprophet PCprophet
 ```
-
-
-This will get you a working copy of PCprophet into a folder called PCprophet
-
-> **note** for the command line version only Python3 and related package dependencies are necessary
-
+This will get you a working copy of PCprophet into a folder called PCprophet.
 
 ## Usage
 
-For usage of PCprophet refers to the [PCprophet_instructions.md](https://github.com/fossatiA/PCprophet/blob/master/PCprophet_instructions.md)
+For usage of PCprophet, refer to the [PCprophet_instructions.md](https://github.com/fossatiA/PCprophet/blob/master/PCprophet_instructions.md).
 
 
 ## Contributing
@@ -49,8 +44,8 @@ Please read [CONTRIBUTE.md](https://github.com/fossatiA/PCprophet/blob/master/CO
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
+This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
 
 ## Acknowledgments
 
-* [mojaje](https://github.com/mojaie/pygosemsim) for the implementation of GO tree parsing
+* We applied the [mojaje](https://github.com/mojaie/pygosemsim) pacakge to the implementation of GO tree parsing.
