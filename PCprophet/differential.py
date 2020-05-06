@@ -3,19 +3,15 @@
 import re
 import os
 import itertools
-import time
 
 import pandas as pd
 import numpy as np
 import scipy.special as spc
-import numpy as np
-import pandas as pd
 import collections as cl
 import scipy.stats as sta
 
 
 import PCprophet.io_ as io
-# import PCprophet.aligner as aligner
 import PCprophet.stats_ as st
 import PCprophet.parse_go as go_parser
 
@@ -449,9 +445,9 @@ def extract_local_peak(row, q, mode, norm=False):
     elif pk < q:
         return tmp[: (q * 2)]
     elif row["SEL"] > (72 - q):
-        return tmp[-(q * 2):]
+        return tmp[-(q * 2) :]
     else:
-        return tmp[(pk - q): (pk + q)]
+        return tmp[(pk - q) : (pk + q)]
 
 
 def extract_inte(df, mode, q=72, norm=False, split_cmplx=False):
@@ -601,6 +597,7 @@ def create_complex_report(infile, sto, sid, outfile="ComplexReport.txt"):
             return str(round(x["SEL"] * fr[x["COND"]] / 72))
         except ValueError:
             return -1
+
     print("Creating complex level report\n")
     sto = pd.read_csv(sto, sep="\t")
     info = pd.read_csv(sid, sep="\t")
@@ -635,7 +632,7 @@ def create_complex_report(infile, sto, sid, outfile="ComplexReport.txt"):
         mrg.replace({"MW": cal}, inplace=True)
     else:
         mrg["MW"] = "0"
-    mrg['Sample_ID'] = mrg['COND'].map(ids)
+    mrg["Sample_ID"] = mrg["COND"].map(ids)
     header = [
         "ComplexID",
         "Condition",
@@ -650,7 +647,7 @@ def create_complex_report(infile, sto, sid, outfile="ComplexReport.txt"):
         "Is Complex",
         "Reported",
         "Estimated MW",
-        "Sample_ID"
+        "Sample_ID",
     ]
     # now rename all the columns
     mrg = mrg.rename(dict(zip(list(mrg), header)), axis=1)
@@ -735,11 +732,11 @@ def assembled(df, thr=0.3):
     """
     test for number of positive to assign global assembly state for exp
     """
-    y = df[df['Is Complex'] == 'Positive'].shape[0]
+    y = df[df["Is Complex"] == "Positive"].shape[0]
     if y / df.shape[0] >= thr:
-        return 'Positive'
+        return "Positive"
     else:
-        return 'Negative'
+        return "Negative"
 
 
 def runner(infile, sample, outf, temp):
@@ -748,7 +745,6 @@ def runner(infile, sample, outf, temp):
     if not os.path.isdir(outf):
         os.makedirs(outf)
     ids = io.read_sample_ids_diff(sample)
-    # aligned_path = os.path.join(temp, "complex_align.txt")
     calc_stoic(path=infile, tmp_fold=temp)
     sto = os.path.join(temp, "stoichiometry.txt")
     complex_report_out = os.path.join(outf, "ComplexReport.txt")
@@ -772,9 +768,9 @@ def runner(infile, sample, outf, temp):
         right_on=["ID", "Sample_ID"],
     )
     # need to check if assembled in any condition
-    ex = dif_cmplx.groupby(['ComplexID']).apply(assembled).reset_index()
-    ex = dict(zip(list(ex['ComplexID']), list(ex[0])))
-    dif_cmplx['Is Complex'] = dif_cmplx['ComplexID'].map(ex)
+    ex = dif_cmplx.groupby(["ComplexID"]).apply(assembled).reset_index()
+    ex = dict(zip(list(ex["ComplexID"]), list(ex[0])))
+    dif_cmplx["Is Complex"] = dif_cmplx["ComplexID"].map(ex)
     dif_cmplx.drop_duplicates(
         subset=["Sample_ID", "ComplexID"], keep="first", inplace=True
     )
@@ -786,14 +782,10 @@ def runner(infile, sample, outf, temp):
     dif_cmplx.rename(columns=nwnm, inplace=True)
     dif_cmplx.rename(columns={"ID": "ComplexID"}, inplace=True)
     dif_cmplx.to_csv(
-        os.path.join(outf, "DifferentialComplexReport.txt"),
-        sep="\t",
-        index=False
+        os.path.join(outf, "DifferentialComplexReport.txt"), sep="\t", index=False
     )
     dif_prot.rename(columns=nwnm, inplace=True)
     dif_prot.rename(columns={"ID": "GeneName"}, inplace=True)
     dif_prot.to_csv(
-        os.path.join(outf, "DifferentialProteinReport.txt"),
-        sep="\t",
-        index=False
+        os.path.join(outf, "DifferentialProteinReport.txt"), sep="\t", index=False
     )

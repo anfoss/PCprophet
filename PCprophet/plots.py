@@ -20,6 +20,7 @@ def plot_positive(comb, sid, pl_dir):
     """
     create 1 dir per condition and plot each complex across repl
     """
+
     def rescale_fract(row, sid):
         ids, rep = row["COND"], row["REPL"]
         fr = sid[(sid["cond"] == ids) & (sid["repl"] == rep)]["fr"].values
@@ -52,8 +53,9 @@ def plot_repl_prof(filt, fold, cols):
     """
     plot profile of protein across groups
     """
+
     def plot_single(axrow, filt, v, csfont):
-        filt2 = filt[filt['REPL'] == v]
+        filt2 = filt[filt["REPL"] == v]
         # pk = np.median(filt2["reSEL"].values)
         fractions = [int(x) for x in range(1, len(filt2["reINT"].iloc[0]) + 1)]
         axrow.grid(color="grey", linestyle="--", linewidth=0.25, alpha=0.5)
@@ -71,12 +73,10 @@ def plot_repl_prof(filt, fold, cols):
     plt.rcParams["grid.color"] = "k"
     plt.rcParams["grid.linestyle"] = ":"
     plt.rcParams["grid.linewidth"] = 0.5
-    repl = set(filt['REPL'])
-    fig, axes = plt.subplots(len(set(repl)),
-                             figsize=(9, 9),
-                             facecolor="white",
-                             sharex=True,
-                             )
+    repl = set(filt["REPL"])
+    fig, axes = plt.subplots(
+        len(set(repl)), figsize=(9, 9), facecolor="white", sharex=True,
+    )
     if len(repl) == 1:
         axes = [axes]
     for i, row in enumerate(axes):
@@ -84,36 +84,32 @@ def plot_repl_prof(filt, fold, cols):
     # call tight layout before legend
     handles, labels = axes[-1].get_legend_handles_labels()
     lgd = fig.legend(
-                    handles,
-                    labels,
-                    # bbox_to_anchor=(0.5,-0.02),
-                    loc='lower center',
-                    ncol=6
-                    )
+        handles,
+        labels,
+        # bbox_to_anchor=(0.5,-0.02),
+        loc="lower center",
+        ncol=6,
+    )
     nm = filt["CMPLX"].values[0]
     ids = nm
     fig.suptitle("\n".join(nm.split("#")), fontsize=12, **csfont)
     plt.xlabel("Rescaled fraction (arb. unit)", fontsize=9, **csfont)
     if "/" in ids:
         ids = ids.replace("/", " ")
-    cnd = list(set(filt['COND']))
+    cnd = list(set(filt["COND"]))
     plotname = os.path.join(fold, cnd[0], "%s.pdf" % str(ids))
     try:
         fig.savefig(
-                    plotname,
-                    dpi=800,
-                    bbox_inches="tight",
-                    )
+            plotname, dpi=800, bbox_inches="tight",
+        )
     except OSError as exc:
         # catch name too long
         if exc.errno == 63:
             ids = ids.split("#")[0]
             plotname = os.path.join(fold, cnd[0], "%s.pdf" % str(ids))
             fig.savefig(
-                        plotname,
-                        dpi=800,
-                        bbox_inches="tight",
-                        )
+                plotname, dpi=800, bbox_inches="tight",
+            )
         else:
             raise exc
     plt.close()
@@ -171,7 +167,12 @@ def plot_recall(out_fold):
     repo = os.path.join(out_fold, "ComplexReport.txt")
     repo = pd.read_csv(repo, sep="\t")
     repo = repo[repo["Is Complex"] == "Positive"]
-    sum_e = repo.groupby(['Condition', 'Replicate', 'Reported']).size().to_frame().reset_index()
+    sum_e = (
+        repo.groupby(["Condition", "Replicate", "Reported"])
+        .size()
+        .to_frame()
+        .reset_index()
+    )
     sum_e = sum_e.values
     space = 0.3
     conditions = np.unique(sum_e[:, 0])

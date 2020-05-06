@@ -115,9 +115,11 @@ class ProphetExperiment(object):
         return a network where every edge between two nodes represents
         jaccard similarity between members > ov
         """
+
         def min_over(l1, l2):
             inter = len(set(l1).intersection(set(l2)))
             return inter / min(len(l1), len(l2))
+
         m2 = []
         m = [k.split("#") for k in l]
         for x in m:

@@ -64,11 +64,7 @@ def runner(infile, db, is_ppi, use_fr):
     prot = io.read_txt(infile)
     print("mapping " + infile + " to " + db)
     # write it for differential stretch it to assert same length
-    prot_notnorm = center_arr(prot,
-                              stretch=(True, 72),
-                              smooth=False,
-                              resc=False
-                              )
+    prot_notnorm = center_arr(prot, stretch=(True, 72), smooth=False, resc=False)
     # perform normalization
     prot = center_arr(prot, fr_nr=use_fr, stretch=(True, 72))
     pr_df = io.create_df(prot)

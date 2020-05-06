@@ -105,8 +105,8 @@ class ComplexProfile(object):
         am = uniform_filter(a.astype(float), W)
         bm = uniform_filter(b.astype(float), W)
 
-        amc = am[W // 2: -W // 2 + 1]
-        bmc = bm[W // 2: -W // 2 + 1]
+        amc = am[W // 2 : -W // 2 + 1]
+        bmc = bm[W // 2 : -W // 2 + 1]
 
         da = a[:, None] - amc
         db = b[:, None] - bmc
@@ -177,7 +177,7 @@ class ComplexProfile(object):
         width = []
         for prot in self.members:
             peak = int(self.pks_ali[prot.get_acc()])
-            prot_peak = prot.get_inte()[(peak - q): (peak + q)]
+            prot_peak = prot.get_inte()[(peak - q) : (peak + q)]
             prot_fwhm = st.fwhm(list(prot_peak))
             width.append(prot_fwhm)
         self.width = np.mean(width)
