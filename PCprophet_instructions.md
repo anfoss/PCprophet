@@ -27,7 +27,7 @@ Examples of correct formatting are provided under test/test_fract.txt data.
 ##### Global parameters:
 
 ```
--Output The output folder
+-output The output folder
 -sid  Sample identifier file
 -cal  Calibration file (no headers)
 -mw_uniprot Gene names to molecular mass
