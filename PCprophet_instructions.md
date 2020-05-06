@@ -4,7 +4,7 @@ After successfully installing all the depedancies, the following command can be 
 ```
 python3 main.py -sid test/test_ids.txt -db coreComplexes.txt -is_ppi False
 ```
-The default input and output folders are '/test/' and '/Output/' under the PCprophet working folder. It will generally take ~15 mins for running.  
+The default input and output folders are '/test/' and '/Output/' respectively, under the PCprophet working folder. It will generally take ~15 mins to finish.  
 
 In the PCprophet package, all parameters can be configured either via the ‘ProphetConfig.conf’ file or via by running PCprophet using the command. When running the PCprophet, the parameters indicated in the command will be written into the ‘ProphetConfig.conf’ file. Generally, four types of features are needed:
 
