@@ -1,6 +1,6 @@
 # PCprophet
 
-The software toolkit for protein complex prediction and differential analysis of cofractionation mass spectrometry datasets.
+Software toolkit for protein complex prediction and differential analysis of cofractionation mass spectrometry datasets.
 
 ## Getting Started
 
