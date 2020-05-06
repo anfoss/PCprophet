@@ -285,4 +285,4 @@ python3 main.py -fdr 0.5
 * -__FalseDiscoveryRate.pdf looks weird__ This FDR plot is across GO score. Thereby we expect lower FDR with increase of GO score. However, as caveat depending on the database used and the complex identified within the database the FDR will vary greatly. For example a CORUM FDR of 0.75 corresponds approximately to a STRING FDR or 0.2.
 
 ### Contact
-Please refer to [README.md](https://github.com/fossatiA/PCprophet/blob/master/README.md) for how to contact us
+Please refer to [README.md](https://github.com/fossatiA/PCprophet/blob/master/README.md) for how to contact us.
