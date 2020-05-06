@@ -1,7 +1,6 @@
 import os
 import matplotlib.pyplot as plt
 import networkx as nx
-#import igraph as ig
 import pandas as pd
 import numpy as np
 
@@ -119,86 +118,6 @@ def plot_repl_prof(filt, fold, cols):
             raise exc
     plt.close()
     return True
-
-
-def plot_network(outf, ppi="./PPIReport.txt"):
-    """
-    plot network
-    """
-
-    def filter_report(df):
-        """
-        take a df with ppi, sort by reported and not
-        and keep the first one (i.e reported)
-        in case that is present
-        """
-        df = df.sort_values(by="Reported", ascending=True)
-        df.drop_duplicates(
-            subset=["ProteinA", "ProteinB", "Replicate", "Condition"],
-            keep="last",
-            inplace=True,
-        )
-        return df
-
-    df = pd.read_csv(os.path.join(outf, ppi), sep="\t")
-    df = df.sort_values(by="Reported", ascending=True)
-    df.drop_duplicates(
-        subset=["ProteinA", "ProteinB", "Replicate", "Condition"],
-        keep="last",
-        inplace=True,
-    )
-    df = filter_report(df)
-    counts = df.groupby(["ProteinA", "ProteinB"]).size().reset_index()
-    df = pd.merge(df, counts, on=["ProteinA", "ProteinB"])
-
-    # now drop duplicates per replicate
-    df.drop_duplicates(subset=["ProteinA", "ProteinB"], keep="first", inplace=True)
-
-    # need to drop the duplicates
-    df_gr = nx.Graph()
-    df_gr.add_edges_from(zip(df["ProteinA"], df["ProteinB"]))
-    probs = None
-    try:
-        probs = pd.read_csv("DifferentialProteinReport.txt", sep="\t")
-        probs = dict(
-            zip(probs["Gene name"], probs["ProbabilityDifferentialRegulation"])
-        )
-    except FileNotFoundError as e:
-        pass
-    if probs:
-        probs = [probs.get(x, 0) for x in df_gr.nodes]
-        # now rescale from 1 to 8
-        probs = [st.renormalize(x, (0, 1), (2, 6)) for x in probs]
-    else:
-        probs = [4] * len(df_gr.nodes)
-    nx.write_graphml(df_gr, "ppi_network.GraphML")
-    df_gr = ig.Graph.Read_GraphML("ppi_network.GraphML")
-
-    # calculate network stats
-    community = df_gr.community_multilevel()
-    comm = max(community.membership)
-    # initialize color palette
-    cols = ig.ClusterColoringPalette(comm + 1)
-    clr = [cols.get(x) for x in community.membership]
-
-    #  create edge color
-    cl_dict = {"Reported": "grey80", "Novel": "grey20"}
-    clr2 = [cl_dict[x] for x in df["Reported"]]
-
-    layout = df_gr.layout("fr")
-    #  https://igraph.org/python/doc/tutorial/tutorial.html
-    outname = os.path.join(outf, "combined_network.pdf")
-    ig.plot(
-        df_gr,
-        outname,
-        layout=layout,
-        vertex_size=probs,
-        edge_width=1,
-        edge_color=clr2,
-        vertex_color=clr,
-        vertex_frame_color=clr,
-        keep_aspect_ratio=False,
-    )
 
 
 def plot_fdr(tmp_fold, out_fold, target_fdr=0.5):
@@ -326,4 +245,3 @@ def runner(tmp_fold, out_fold, target_fdr, sid):
     plot_recall(out_fold)
     comb = os.path.join(tmp_fold, "combined.txt")
     plot_positive(comb, sid, pl_dir=outf)
-    #plot_network(out_fold, "PPIreport.txt")

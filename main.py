@@ -3,9 +3,7 @@
 import argparse
 import configparser
 import sys
-import glob
 import os
-from time import time
 import platform
 import multiprocessing.dummy as mult_proc
 from functools import partial
@@ -22,7 +20,6 @@ from PCprophet import differential as differential
 from PCprophet import predict as predict
 from PCprophet import plots as plots
 
-from PCprophet import exceptions as exceptions
 from PCprophet import validate_input as validate
 
 
@@ -43,8 +40,6 @@ def create_config():
     parse command line and create .ini file for configuration
     '''
     parser = ParserHelper(description='Protein Complex Prophet argument')
-    os_s = get_os()
-    boolean = ['True', 'False']
     parser.add_argument(
         '-db',
         help='protein complex database from CORUM or ppi network in STRING format',
@@ -179,26 +174,26 @@ def create_config():
 
 
 def preprocessing(infile, config):
-     validate.InputTester(infile, 'in').test_file()
-     map_to_database.runner(
+    validate.InputTester(infile, 'in').test_file()
+    map_to_database.runner(
          infile=infile,
          db=config['GLOBAL']['db'],
          is_ppi=config['PREPROCESS']['is_ppi'],
          use_fr=config['PREPROCESS']['all_fract'],
          )
-     hypothesis.runner(
+    hypothesis.runner(
          infile=infile,
          hypothesis=config['PREPROCESS']['merge'],
          use_fr=config['PREPROCESS']['all_fract'],
          )
      # sample specific folder
-     tmp_folder = io.file2folder(infile, prefix=config['GLOBAL']['temp'])
-     merge.runner(base=tmp_folder, mergemode=config['PREPROCESS']['merge'])
-     generate_features.runner(
+    tmp_folder = io.file2folder(infile, prefix=config['GLOBAL']['temp'])
+    merge.runner(base=tmp_folder, mergemode=config['PREPROCESS']['merge'])
+    generate_features.runner(
          tmp_folder, config['GLOBAL']['go_obo'], config['GLOBAL']['sp_go']
          )
-     predict.runner(tmp_folder)
-     return True
+    predict.runner(tmp_folder)
+    return True
 
 
 # TODO fix mv resource_path to main for pynstaller
