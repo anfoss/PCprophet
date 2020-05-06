@@ -1,6 +1,6 @@
 ## PCprophet (command line version)
 
-After successfully installing all the depedancies, the following command can be directly run to test PCprophet with the example dataset provided by us (i.e. test/test_fract.txt):
+After successfully installing all the depedancies, the following command can be directly run to test PCprophet with the example dataset (i.e. test/test_fract.txt):
 ```
 python3 main.py -sid test/test_ids.txt -is_ppi False -db coreComplexes.txt
 ```
