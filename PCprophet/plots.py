@@ -1,7 +1,7 @@
 import os
 import matplotlib.pyplot as plt
 import networkx as nx
-import igraph as ig
+#import igraph as ig
 import pandas as pd
 import numpy as np
 
@@ -326,4 +326,4 @@ def runner(tmp_fold, out_fold, target_fdr, sid):
     plot_recall(out_fold)
     comb = os.path.join(tmp_fold, "combined.txt")
     plot_positive(comb, sid, pl_dir=outf)
-    plot_network(out_fold, "PPIreport.txt")
+    #plot_network(out_fold, "PPIreport.txt")
