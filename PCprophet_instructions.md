@@ -98,7 +98,7 @@ All of the above parameters have the following default settings
 
 | Parameter      | Default           |Possible                              |
 | :--------------| :-----------------|:-------------------------------------|
-| -Output        | './Output'        |any                                   |
+| -output        | './Output'        |any                                   |
 | -sid           | './sample_ids.txt'|any                                   |
 | -cal           | None              |any                                   |
 | -mw_uniprot    | None              |any                                   |
