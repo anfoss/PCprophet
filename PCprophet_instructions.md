@@ -1,4 +1,4 @@
-## PCprophet (command line version)
+## PCprophet instruction
 
 After successfully installing all the depedancies, the following command can be directly run to test PCprophet with the example dataset (i.e. test/test_fract.txt):
 ```
