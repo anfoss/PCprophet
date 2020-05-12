@@ -15,7 +15,7 @@ These instructions will guide you to obtain a copy of the project, to run on you
 
 ### Installing
 
-We recommend using [anaconda](https://www.anaconda.com) as it contains the majority of the required packages for PCprophet, while igraph needs to be installed separately [here](https://igraph.org/python/).
+We recommend using [anaconda](https://www.anaconda.com) as it contains the majority of the required packages for PCprophet.
 
 #### Command line version
 
