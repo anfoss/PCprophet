@@ -85,6 +85,7 @@ class ComplexProfile(object):
         for k in self.pks.keys():
             yield "{}\t{}\t{}".format(k, self.get_name(), self.pks[k])
 
+    @io.timeit
     def calc_go_score(self, goobj, gaf):
         self.score = go.combine_all(goobj, gaf, np.array(self.get_members()),)
 
@@ -95,6 +96,7 @@ class ComplexProfile(object):
         cmplx_members = self.get_members()
         return "#".join(cmplx_members)
 
+    @io.timeit
     def calc_corr(self, pairs, W=10):
         """
         vectorized correlation between pairs vectors with sliding window
@@ -125,6 +127,7 @@ class ComplexProfile(object):
         # add np.nan to reach 72
         self.cor.append(np.hstack((D / np.sqrt(ssAs * ssBs), np.zeros(9) + np.nan)))
 
+    @io.timeit
     def align_peaks(self):
         """
         align all protein peaks
@@ -172,6 +175,7 @@ class ComplexProfile(object):
     def calc_diff(self, p1, p2):
         self.diff.append(abs(p1.get_inte() - p2.get_inte()))
 
+    @io.timeit
     def calc_width(self):
         q = 5
         width = []
