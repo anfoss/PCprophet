@@ -3,27 +3,23 @@
 import argparse
 import configparser
 import sys
-import glob
 import os
-from time import time
 import platform
 import multiprocessing.dummy as mult_proc
 from functools import partial
 
 
 # modules
-from PCprophet import io_ as io
-from PCprophet import collapse as collapse
-from PCprophet import generate_features as generate_features
-from PCprophet import hypothesis as hypothesis
-from PCprophet import map_to_database as map_to_database
-from PCprophet import merge as merge
-from PCprophet import differential as differential
-from PCprophet import predict as predict
-from PCprophet import plots as plots
-
-from PCprophet import exceptions as exceptions
-from PCprophet import validate_input as validate
+import io_ as io
+import collapse as collapse
+import generate_features as generate_features
+import hypothesis as hypothesis
+import map_to_database as map_to_database
+import merge as merge
+import differential as differential
+import predict as predict
+import plots as plots
+import validate_input as validate
 
 
 class ParserHelper(argparse.ArgumentParser):
