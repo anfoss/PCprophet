@@ -67,8 +67,8 @@ setup_args = dict(
     entry_points={
         'console_scripts': [
             'PCprophet=PCprophet.app:main',
-        ],
-}
+        ]
+    }
 )
 
 setup(**setup_args)
