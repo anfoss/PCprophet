@@ -1,6 +1,6 @@
 # PCprophet
 
-The software toolkit for protein complex prediction and differential analysis of cofractionation mass spectrometry datasets.
+Software toolkit for protein complex prediction and differential analysis of cofractionation mass spectrometry datasets.
 
 ## Getting Started
 
@@ -15,7 +15,7 @@ These instructions will guide you to obtain a copy of the project, to run on you
 
 ### Installing
 
-We recommend using [anaconda](https://www.anaconda.com) as it contains the majority of the required packages for PCprophet, while igraph needs to be installed separately [here](https://igraph.org/python/).
+We recommend using [anaconda](https://www.anaconda.com) as it contains the majority of the required packages for PCprophet.
 
 #### Command line version
 
@@ -48,4 +48,4 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 
 ## Acknowledgments
 
-* We applied the [mojaje](https://github.com/mojaie/pygosemsim) pacakge to the implementation of GO tree parsing.
+* [mojaje](https://github.com/mojaie/pygosemsim) for the implementation of GO tree parsing.
