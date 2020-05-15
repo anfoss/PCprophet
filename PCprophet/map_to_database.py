@@ -37,7 +37,7 @@ def rec_mcl(path):
     clusters = mc.get_clusters(result)
     opt = mc.run_mcl(matrix, inflation=optimize_mcl(matrix, result, clusters))
     clusters = mc.get_clusters(opt)
-    node = dict(enumerate(g.node()))
+    node = dict(enumerate(g.nodes()))
     io.create_db_from_cluster(node, clusters)
     return True
 

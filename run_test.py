@@ -1,6 +1,5 @@
 # !/usr/bin/env python3
 
-import pytest
 import os
 from PCprophet import io_ as io
 from PCprophet import collapse as collapse
