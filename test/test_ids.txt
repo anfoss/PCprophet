@@ -1,3 +1,2 @@
 Sample	cond	group	short_id	repl	fr
 ./test/test_frac.txt	Ctrl	1	test	1	64
-./test/test_frac_shft.txt	Treat1	1	test	1	64
