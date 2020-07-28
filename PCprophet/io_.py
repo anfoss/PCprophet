@@ -8,6 +8,7 @@ from datetime import datetime
 from collections import defaultdict
 import random
 import time
+import uuid
 
 
 def makehash(w=dict):
@@ -336,7 +337,7 @@ def create_db_from_cluster(nodes, clusters):
 
 
 def file2folder(file_, prefix="./tmp/"):
-    ## we are already stripping the extension
+    # we are already stripping the extension
     filename = os.path.splitext(os.path.basename(file_))[0]
     return os.path.join(prefix, filename)
 
@@ -376,24 +377,9 @@ def split_hypo_db(pred, ref_cmplx, cmplx_ann):
 
 def uniqueid():
     """
-      generate unique id with length 17 to 21
+    generate unique id with length 17 to 21
     """
-    mynow = datetime.now
-    sft = datetime.strftime
-    old_time = mynow()
-    seed_range_bits = 14  # max range for seed
-    seed_max_value = 2 ** seed_range_bits - 1
-    seed = random.getrandbits(seed_range_bits)
-    current_seed = str(seed)
-    current_time = mynow()
-    if current_time <= old_time:
-        seed = max(1, (seed + 1) % seed_max_value)
-        current_seed = str(seed)
-    newid = int("".join([sft(current_time, "%f%S%M%H%d%m%Y"), current_seed]))
-    # save current time
-    old_time = current_time
-    # return a new id
-    return newid
+    return str(uuid.uuid4())
 
 
 def split_to_df(df, col, sep=","):
