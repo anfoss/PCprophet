@@ -8,6 +8,7 @@ from datetime import datetime
 from collections import defaultdict
 import random
 import time
+import uuid
 
 
 def makehash(w=dict):

@@ -31,6 +31,7 @@ class ProteinProfile(object):
     def get_peaks(self):
         return self.peaks
 
+    @io.timeit
     def calc_peaks(self):
         pks = list(st.peak_picking(self.inten)[0])
         # avoid breakage due to float
@@ -280,7 +281,7 @@ def shortest_path(aoa, max_trial=5000):
             new_pk[1] = minimize(new_pk[0])
             add_top(result, new_pk)
 
-
+@io.timeit
 def alligner(aoa):
     """Finds closest points of a list of lists"""
     # one of arrays is empty
