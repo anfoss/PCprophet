@@ -94,8 +94,14 @@ def plot_repl_prof(filt, fold, cols):
     ids = nm
     fig.suptitle("\n".join(nm.split("#")), fontsize=12, **csfont)
     plt.xlabel("Rescaled fraction (arb. unit)", fontsize=9, **csfont)
+    # deal with / in complex name or unicode
+    # tbd
     if "/" in ids:
         ids = ids.replace("/", " ")
+    if "\\u00b5" in ids:
+        ids = ids.replace("\\u00b5", "u")
+    if "\\u2013" in ids:
+        ids = ids.replace("\\u2013", "-")
     cnd = list(set(filt["COND"]))
     plotname = os.path.join(fold, cnd[0], "%s.pdf" % str(ids))
     try:
@@ -104,7 +110,7 @@ def plot_repl_prof(filt, fold, cols):
         )
     except OSError as exc:
         # catch name too long
-        if exc.errno == 63:
+        if exc.errno == 63 or exc.errno == 22:
             ids = ids.split("#")[0]
             plotname = os.path.join(fold, cnd[0], "%s.pdf" % str(ids))
             fig.savefig(
