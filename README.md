@@ -15,7 +15,7 @@ These instructions will guide you to obtain a copy of the project, to run on you
 
 ### Installing
 
-We recommend using [anaconda](https://www.anaconda.com) as it contains the majority of the required packages for PCprophet.
+We recommend using [anaconda](https://www.anaconda.com) as it contains the majority of the required packages for PCprophet. If you are using Windows and having problems adding paths of anaconda and Python, please click .[here](https://www.datacamp.com/community/tutorials/installing-anaconda-windows) for guidance.
 
 #### Command line version
 
