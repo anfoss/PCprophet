@@ -1,9 +1,13 @@
 # !/usr/bin/env python3
 
 from setuptools import setup, find_packages
+from os import path
 
+here = path.abspath(path.dirname(__file__))
 
-long_description = 'PCprophet is a complete toolset for analyzing coelution mass spectrometry data, by prediction of novel complexes, identification of reported complexes and differential analysis across conditions'
+with open(path.join(here, 'README.md')) as f:
+    long_description = f.read()
+
 
 setup_args = dict(
     name='PCProphet',
@@ -30,7 +34,7 @@ setup_args = dict(
         'validate_input.py',
     ],
     # long_description=long_description,
-    license='BSD',
+    license='MIT',
     # Project uses reStructuredText, so ensure that the docutils get
     # installed or upgraded on the target machine
     install_requires=['scipy>=1.1', 'pandas', 'sklearn', 'networkX'],
@@ -50,6 +54,7 @@ setup_args = dict(
     },
     platforms="Linux, Mac OS X, Windows",
     long_description=long_description,
+    long_description_content_type='text/markdown',
     classifiers=[
         'Intended Audience :: Science/Research',
         'License :: OSI Approved :: Modified BSD License',
@@ -58,14 +63,12 @@ setup_args = dict(
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7'
-    ]
+    ],
+    entry_points={
+        'console_scripts': [
+            'PCprophet=PCprophet.app:main',
+        ]
+    }
 )
-# TODO add compilation for Java GUI
 
-
-def main():
-    setup(**setup_args)
-
-
-if __name__ == '__main__':
-    main()
+setup(**setup_args)
