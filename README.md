@@ -8,10 +8,10 @@ These instructions will guide you to obtain a copy of the project, to run on you
 ### Dependencies
 
 * [Python >=3.4.x](https://www.python.org)
-* [Sklearn 0.20.3](https://pypi.org/project/sklearn/)
+* [Sklearn 0.23.2](https://pypi.org/project/sklearn/)
 * [NetworkX v2.4](https://networkx.github.io)
 * [Pandas >0.23](https://pandas.pydata.org)
-* [Scipy >1.1.0](https://www.scipy.org)
+* [Scipy >1.5.2](https://www.scipy.org)
 
 ### Installing
 
