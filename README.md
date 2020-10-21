@@ -38,7 +38,7 @@ Please read [CONTRIBUTING.md](https://github.com/fossatiA/PCprophet/blob/master/
 
 ## Authors
 
-* **Andrea Fossati** - *Initial work* - [fossatiA](https://github.com/fossatiA) fossati@imsb.biol.ethz.ch
+* **Andrea Fossati** - *Initial work* - [fossatiA](https://github.com/fossatiA) andrea.fossati@ucsf.edu
 * **Chen Li** - *Initial work* - chen.li@monash.edu
 
 
