@@ -174,7 +174,6 @@ class ProphetExperiment(object):
         pos = self.complex_c[self.complex_c["IS_CMPLX"] == "Yes"]
         hypo = pos[pos["ANN"] != 1]
         simil_graph = self.similarity_graph(hypo["MB"], hypo.index, ov=0.5)
-        assert False
         # we need to remove nodes after merging together
         rm = []
         # better to get db positive here
@@ -232,12 +231,10 @@ class ProphetExperiment(object):
         calculate fdr from GO and add FDR to each complex
         """
         fdrfile = os.path.join(self.base, "fdr.txt")
-        print(self.complex_c.shape)
         hyp, fdr = go_fdr.fdr_from_GO(
             cmplx_comb=self.complex_c, target_fdr=float(target_fdr), fdrfile=fdrfile
         )
-        print(hyp)
-        assert False
+
         fdr = pd.DataFrame(list(fdr), columns=["fdr", "sumGO", "ID"])
         fdr.set_index("ID", inplace=True)
         self.fdr = fdr
@@ -248,8 +245,6 @@ class ProphetExperiment(object):
             left_index=True,
             right_index=True,
         )
-        print(self.complex_c.shape)
-        assert False
         self.complex_c["fdr"].fillna(0, inplace=True)
 
     def add_single_prot(self, cols):
@@ -357,10 +352,7 @@ class MultiExperiment(object):
         alldb = pd.concat([exp.get_db() for exp in self.allexps])
         alldb["nm"] = alldb.index + alldb["CREP"]
         alldb["ID"] = alldb.index
-        print(alldb.shape)
         self.complex_c_all = pd.concat([alldb, self.all_hypo], ignore_index=True)
-        print(self.all_hypo)
-        print(self.complex_c_all.shape)
         return True
 
     def protein_centric_combine(self):
