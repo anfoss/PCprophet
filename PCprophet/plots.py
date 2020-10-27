@@ -248,7 +248,13 @@ def runner(tmp_fold, out_fold, target_fdr, sid):
     outf = os.path.join(out_fold, "Plots")
     if not os.path.isdir(outf):
         os.makedirs(outf)
-    plot_fdr(tmp_fold, out_fold, target_fdr)
-    plot_recall(out_fold)
+    try:
+        plot_fdr(tmp_fold, out_fold, target_fdr)
+    except ValueError:
+        pass
+    try:
+        plot_recall(out_fold)
+    except Exception as e:
+        pass
     comb = os.path.join(tmp_fold, "combined.txt")
     plot_positive(comb, sid, pl_dir=outf)
