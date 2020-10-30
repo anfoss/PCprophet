@@ -72,18 +72,15 @@ def calc_fdr(combined, db, go_thresh):
     return est_fdr, conf_m
 
 
-def calc_pdf(decoy, target):
+def calc_pdf(decoy, target=None):
     """
     calculate empirical fdr if not enough db hits are present
     use gaussian mixture model 2 components to predict class probability
-    for all hypo and db pooled. Then from the two distributions estimated fdr
-    from pep
-
-    input == two pandas dataframe with target GO distr and decoy GO distr
+    Then from the two distributions estimated fdr from pep
     """
-    X = np.concatenate([decoy, target]).reshape(-1, 1)
-    label = ["d"] * decoy.shape[0] + ["t"] * target.shape[0]
-    label = np.array(label).reshape(-1, 1)
+    X = decoy.reshape(-1, 1)
+    # label = ["d"] * decoy.shape[0] + ["t"] * target.shape[0]
+    # label = np.array(label).reshape(-1, 1)
     clf = GaussianMixture(
         n_components=2,
         covariance_type="full",
@@ -154,7 +151,8 @@ def eval_complexes(cmplx):
     if cmplx[(cmplx["IS_CMPLX"] == "Yes") & (cmplx["ANN"] == 1)].shape[0] > 50:
         # return only positive database
         return cmplx[(cmplx["IS_CMPLX"] == "Yes") & (cmplx["ANN"] == 1)]
-    elif cmplx[cmplx["ANN"] == 1].shape[0] > 100:
+        # use all complexes
+    elif cmplx[cmplx["ANN"] == 1].shape[0] > 0:
         return cmplx[cmplx["ANN"] == 1]
     else:
         # empty so can quack
@@ -178,14 +176,10 @@ def fdr_from_GO(cmplx_comb, target_fdr, fdrfile):
         # if empty then GMM
         if db_use.empty:
             # we update nm here
-            repo = cmplx_comb[
-                (cmplx_comb["IS_CMPLX"] == "Yes") & (cmplx_comb["ANN"] == 1)
-            ]
             print("Not enough reported for FDR estimation, using GMM model")
             # then we need to extract the go sum only
             go_hypo = hypo["TOTS"].values
-            go_repo = repo["TOTS"].values
-            predicted = calc_pdf(go_hypo, go_repo)
+            predicted = calc_pdf(go_hypo)
             tp, fp = split_posterior(predicted)
             thresh_fdr, go_cutoff = fdr_from_pep(tp=tp, fp=fp, target_fdr=target_fdr)
         else:
