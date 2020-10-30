@@ -111,7 +111,7 @@ def create_config():
     parser.add_argument(
         '-co',
         help='collapse mode',
-        choices=['GO', 'CAL', 'SUPER', 'NONE'],
+        choices=['GO', 'CAL', 'SUPER', 'PROB', 'NONE'],
         dest='collapse',
         default='GO',
         action='store',
@@ -129,7 +129,7 @@ def create_config():
         help='Multi processing',
         dest='multi',
         action='store',
-        default='False',
+        default='True',
         choices=['True', 'False']
     )
     parser.add_argument('-w', dest='weight_pred', action='store', default=1, type=float)
@@ -186,7 +186,7 @@ def preprocessing(infile, config):
          hypothesis=config['PREPROCESS']['merge'],
          use_fr=config['PREPROCESS']['all_fract'],
          )
-     # sample specific folder
+    #  # sample specific folder
     tmp_folder = io.file2folder(infile, prefix=config['GLOBAL']['temp'])
     merge.runner(base=tmp_folder, mergemode=config['PREPROCESS']['merge'])
     generate_features.runner(
@@ -196,7 +196,6 @@ def preprocessing(infile, config):
     return True
 
 
-# TODO fix mv resource_path to main for pynstaller
 def main():
     config = create_config()
     validate.InputTester(config['GLOBAL']['db'], 'db').test_file()
@@ -226,6 +225,7 @@ def main():
         config['GLOBAL']['output'],
         config['GLOBAL']['temp']
     )
+    assert False
     plots.runner(
         config['GLOBAL']['temp'],
         config['GLOBAL']['output'],

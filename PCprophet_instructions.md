@@ -82,15 +82,17 @@ In this case a Markov clustering is first performed to generate putative complex
 
 **-co GO** Selects the complex with the highest Go score per dendogram branch  (A,B)
 
-**-co P** Selects the complex with the highest probability per dendogram branch (A,B,C,D)
+**-co PROB** Selects the complex with the highest probability per dendogram branch (A,B,C,D)
 
 **-co SUPER** Selects the complex with the highest number of members (superset) per dendrogram branch (A,B,C,D)
 
+**-co CAL** Extrapolates the molecular weight from the apex peak for the reported complex using the calibration provided. Then selects the complex with the closer mass to the theoretical weight. If for example extrapolated MW for these set of complexes is 200000 Da then A,B,C will be selected
 
-**-co CAL** Extrapolates the molecular weight from the apex peak for the reported complex using the calibration provided. Then selects the complex with the closer mass to the theoretical weight. If for example extrapolated MW for this set of complexes is 200000 Da then A,B,C will be selected
+To use CAL it is necessary to pass also the mw_uniprot flag. Just add 'Mass' as a column in uniprot and export in tab format and rename to .txt.
+___There are two columns which are needed 'Gene names' which holds your identifiers (whether real gene names or protein accession) and 'Mass' which contains all masses as , separated numbers___ 
 
 
-> **Note:** __We recommend using collapsing based on calibration curve and molecular weight as this enforces the correct mass distribution__
+> **Note:** __We recommend using collapsing based on calibration curve and molecular weight as this enforces the correct mass distribution but ONLY if a calibration curve covering all molecular weight range of the column is available. Extrapolation outside the standard leads to wrong molecular weight estimation__
 
 
 All of the above parameters have the following default settings
@@ -105,8 +107,8 @@ All of the above parameters have the following default settings
 | -all_fract     | 'all'             |[1>x>number of fractions, 'all']      |
 | -is_ppi        | 'False'           |[True, False]                         |
 | -merge         | 'all'             |['all', 'reference']                  |
-| -co            | 'GO'              |['GO', 'SUPER', 'CAL', 'eCAL', 'NONE']|
-| -fdr           | 0.75              |0>x>1                                 |
+| -co            | 'GO'              |['GO','SUPER','CAL','eCAL','PROB' 'NONE']|
+| -fdr           | 0.5              |0>x>1                                 |
 
 all parameters can be inspected using
 
@@ -218,7 +220,7 @@ Depending on the error raised different fixes are needed.
 * __Why in ComplexReport.txt the complexID has several complexes concatenated by # ?__ We are using the parsimony principle, thereby complexes for which there are not enough evidence (i.e with the same subunits identified across the experiment) are reported in the same complex group
 
 
-* __I want to search with several different FDR and collapse method but it took long time to generate the features__ The modular organization of PCprophet makes it easy to skip certain modules. If for example re run with FDR of 50%.
+* __I want to search with several different FDR and collapse method but it took long time to generate the features__ The modular organization of PCprophet makes it easy to skip certain modules. For example re-run with FDR of 50%.
 - Open main.py in a text editor and go to the main () function.
 
 Here comment the preprocessing call out:

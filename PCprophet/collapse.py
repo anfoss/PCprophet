@@ -199,7 +199,7 @@ class ProphetExperiment(object):
                 # idxs to remove
                 tm = np.setdiff1d(np.array(totest.index), np.array(tokeep))
                 rm.extend(list(tm))
-            except KeyError:
+            except KeyError as e:
                 # this is always gonna happen because we remove in place
                 pass
         self.complex_c.drop(index=rm, inplace=True)
@@ -214,7 +214,7 @@ class ProphetExperiment(object):
 
     def collapse_prob(self, totest):
         """
-        select complex with higest probability per dendro
+        select complex with higest probability per dendrogram branch
         """
         mx = totest[totest["POS"] == totest["POS"].max()]
         return mx.index
