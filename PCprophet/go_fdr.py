@@ -194,4 +194,5 @@ def fdr_from_GO(cmplx_comb, target_fdr, fdrfile):
         print("Estimated GO cutoff is {}".format(go_cutoff))
         return filter_hypo(cmplx_comb, go_cutoff), zip(thresh_fdr, thresh, nm)
     else:
+        print("No FDR control performed")
         return filter_hypo(cmplx_comb, 0), zip([0], [0], [0])

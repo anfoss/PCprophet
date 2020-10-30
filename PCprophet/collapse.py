@@ -192,6 +192,8 @@ class ProphetExperiment(object):
                     tokeep = self.collapse_mincal(totest)
                 elif mode == "SUPER":
                     tokeep = self.collapse_largest(totest)
+                elif mode == "PROB":
+                    tokeep = self.collapse_prob(totest)
                 elif mode == "eCAL":
                     raise NotImplementedError
                 # idxs to remove
@@ -208,6 +210,13 @@ class ProphetExperiment(object):
         """
         totest["l"] = totest["MB"].apply(lambda x: len(x.split("#")))
         mx = totest[totest["l"] == totest["l"].max()]
+        return mx.index
+
+    def collapse_prob(self, totest):
+        """
+        select complex with higest probability per dendro
+        """
+        mx = totest[totest["POS"] == totest["POS"].max()]
         return mx.index
 
     def collapse_go(self, totest):
