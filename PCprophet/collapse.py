@@ -171,6 +171,7 @@ class ProphetExperiment(object):
         """
         collapse hypothesis using mode
         """
+        self.complex_c.dropna(subset=['MB'], inplace=True)
         pos = self.complex_c[self.complex_c["IS_CMPLX"] == "Yes"]
         hypo = pos[pos["ANN"] != 1]
         simil_graph = self.similarity_graph(hypo["MB"], hypo.index, ov=0.5)
@@ -196,6 +197,8 @@ class ProphetExperiment(object):
                     tokeep = self.collapse_prob(totest)
                 elif mode == "eCAL":
                     raise NotImplementedError
+                elif mode=='NONE':
+                    tokeep = totest.index
                 # idxs to remove
                 tm = np.setdiff1d(np.array(totest.index), np.array(tokeep))
                 rm.extend(list(tm))
