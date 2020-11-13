@@ -57,9 +57,9 @@ In this case a Markov clustering is first performed to generate putative complex
 ##### Pre-processing parameters:
 
 ```
--all_fract  The number of fractions to use [1, X].
+-all  The number of fractions to use [1, X].
 -is_ppi Is the provided database a PPI network or a complex database
--merge  Choose ‘all’ for using data-driven+database based hypothesis generation and ‘reference’ use only database derived complexes
+-ma  Choose ‘all’ for using data-driven+database based hypothesis generation and ‘reference’ use only database derived complexes
 
 ```
 
