@@ -27,7 +27,7 @@ def test_model():
 
 
 # old rf_equal.clf
-def runner(base, model="./PCprophet/rf_equal.clf"):
+def runner(base, model="./PCprophet/rf_allneg.clf"):
     """
     get model file and run prediction
     """
