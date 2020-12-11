@@ -57,9 +57,9 @@ In this case a Markov clustering is first performed to generate putative complex
 ##### Pre-processing parameters:
 
 ```
--all_fract  The number of fractions to use [1, X].
+-all  The number of fractions to use [1, X].
 -is_ppi Is the provided database a PPI network or a complex database
--merge  Choose ‘all’ for using data-driven+database based hypothesis generation and ‘reference’ use only database derived complexes
+-ma  Choose ‘all’ for using data-driven+database based hypothesis generation and ‘reference’ use only database derived complexes
 
 ```
 
@@ -104,9 +104,9 @@ All of the above parameters have the following default settings
 | -sid           | './sample_ids.txt'|any                                   |
 | -cal           | None              |any                                   |
 | -mw_uniprot    | None              |any                                   |
-| -all_fract     | 'all'             |[1>x>number of fractions, 'all']      |
+| -all           | 'all'             |[1>x>number of fractions, 'all']      |
 | -is_ppi        | 'False'           |[True, False]                         |
-| -merge         | 'all'             |['all', 'reference']                  |
+| -ma            | 'all'             |['all', 'reference']                  |
 | -co            | 'GO'              |['GO','SUPER','CAL','eCAL','PROB' 'NONE']|
 | -fdr           | 0.5              |0>x>1                                 |
 
