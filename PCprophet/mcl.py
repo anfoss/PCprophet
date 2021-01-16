@@ -4,6 +4,24 @@ import sklearn.preprocessing
 from fractions import Fraction
 from itertools import permutations
 from scipy.sparse import isspmatrix, dok_matrix, find
+import sys
+import networkx as nx
+from matplotlib.pylab import show, cm, axis
+
+
+class Printer(object):
+    def __init__(self, enabled):
+        self._enabled = enabled
+
+    def enable(self):
+        self._enabled = True
+
+    def disable(self):
+        self._enabled = False
+
+    def print(self, string):
+        if self._enabled:
+            print(string)
 
 
 def sparse_allclose(a, b, rtol=1e-5, atol=1e-8):
@@ -171,7 +189,7 @@ def run_mcl(
     expansion=2,
     inflation=2,
     loop_value=1,
-    iterations=100,
+    iterations=1000,
     pruning_threshold=0.001,
     pruning_frequency=1,
     convergence_check_frequency=1,
@@ -202,6 +220,29 @@ def run_mcl(
     assert pruning_threshold >= 0, "Invalid pruning_threshold"
     assert pruning_frequency > 0, "Invalid pruning_frequency"
     assert convergence_check_frequency > 0, "Invalid convergence_check_frequency"
+    printer = Printer(verbose)
+    printer.print("-" * 50)
+    printer.print("MCL Parameters")
+    printer.print("Expansion: {}".format(expansion))
+    printer.print("Inflation: {}".format(inflation))
+    if pruning_threshold > 0:
+        printer.print(
+            "Pruning threshold: {}, frequency: {} iteration{}".format(
+                pruning_threshold,
+                pruning_frequency,
+                "s" if pruning_frequency > 1 else "",
+            )
+        )
+    else:
+        printer.print("No pruning")
+    printer.print(
+        "Convergence check: {} iteration{}".format(
+            convergence_check_frequency, "s" if convergence_check_frequency > 1 else ""
+        )
+    )
+    printer.print("Maximum iterations: {}".format(iterations))
+    printer.print("{} matrix mode".format("Sparse" if isspmatrix(matrix) else "Dense"))
+    printer.print("-" * 50)
 
     # Initialize self-loops
     if loop_value > 0:
@@ -212,6 +253,7 @@ def run_mcl(
 
     # iterations
     for i in range(iterations):
+        printer.print("Iteration {}".format(i + 1))
 
         # store current matrix for convergence checking
         last_mat = matrix.copy()
@@ -221,13 +263,19 @@ def run_mcl(
 
         # prune
         if pruning_threshold > 0 and i % pruning_frequency == pruning_frequency - 1:
+            printer.print("Pruning")
             matrix = prune(matrix, pruning_threshold)
 
         # Check for convergence
         if i % convergence_check_frequency == convergence_check_frequency - 1:
+            printer.print("Checking for convergence")
             if converged(matrix, last_mat):
+                printer.print(
+                    "Converged after {} iteration{}".format(i + 1, "s" if i > 0 else "")
+                )
                 break
 
+    printer.print("-" * 50)
     return matrix
 
 
@@ -290,7 +338,7 @@ def modularity(matrix, clusters):
     :param clusters: The clusters returned by get_clusters
     :returns: modularity value
     """
-    matrix = convert_to_adjacency_matrix(matrix)
+    # matrix = convert_to_adjacency_matrix(matrix)
     m = matrix.sum()
 
     if isspmatrix(matrix):
@@ -308,7 +356,5 @@ def modularity(matrix, clusters):
 
     delta = delta_matrix(matrix, clusters)
     indices = np.array(delta.nonzero())
-
     Q = sum(matrix[i, j] - expected(i, j) / m for i, j in indices.T) / m
-
     return Q

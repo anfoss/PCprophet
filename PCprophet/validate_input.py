@@ -29,12 +29,11 @@ class InputTester(object):
     def test_empty(self, col):
         for x in col:
             if self.infile[x].isnull().values.any():
-                print(x)
                 raise PCpexc.EmptyColumnError(self.path)
 
     def test_uniqueid(self, totest):
         if self.infile.duplicated(totest).any():
-            print("The following rows in %s are duplicated".format(self.path))
+            print("The following rows in {} are duplicated".format(self.path))
             print(self.infile[self.infile.duplicated(totest)])
             raise PCpexc.DuplicateIdentifierError(self.path)
 

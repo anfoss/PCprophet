@@ -79,7 +79,7 @@ def calc_pdf(decoy, target=None):
     Then from the two distributions estimated fdr from pep
     """
     X = decoy.reshape(-1, 1)
-    # label = ["d"] * decoy.shape[0] + ["t"] * target.shape[0]
+    #  label = ["d"] * decoy.shape[0] + ["t"] * target.shape[0]
     # label = np.array(label).reshape(-1, 1)
     clf = GaussianMixture(
         n_components=2,
@@ -151,7 +151,7 @@ def eval_complexes(cmplx):
     if cmplx[(cmplx["IS_CMPLX"] == "Yes") & (cmplx["ANN"] == 1)].shape[0] > 50:
         # return only positive database
         return cmplx[(cmplx["IS_CMPLX"] == "Yes") & (cmplx["ANN"] == 1)]
-        # use all complexes
+        #  use all complexes
     elif cmplx[cmplx["ANN"] == 1].shape[0] > 0:
         return cmplx[cmplx["ANN"] == 1]
     else:

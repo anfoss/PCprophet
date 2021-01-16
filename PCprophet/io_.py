@@ -425,6 +425,7 @@ def prepare_feat(infile, thresh=1, missing=["nan", "na", "", None, "n", "-"]):
     read infile and split it
     """
     feat = pd.read_csv(infile, sep="\t", na_values=missing)
+    feat.dropna(inplace=True)
     memos = feat[["ID"]]
     torm = ["ID", "MB", "SC_CC", "SC_MF", "SC_BP", "TOTS"]
     feat.drop(torm, axis=1, inplace=True)
