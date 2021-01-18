@@ -12,6 +12,11 @@ import PCprophet.stats_ as st
 
 
 np.seterr(all="ignore")
+# silence the division by 0 in the correlation calc
+mute = np.testing.suppress_warnings()
+mute.filter(RuntimeWarning)
+mute.filter(module=np.ma.core)
+
 
 class ProteinProfile(object):
     """
@@ -97,6 +102,7 @@ class ComplexProfile(object):
         cmplx_members = self.get_members()
         return "#".join(cmplx_members)
 
+    @mute
     def calc_corr(self, pairs, W=10):
         """
         vectorized correlation between pairs vectors with sliding window
