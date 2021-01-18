@@ -20,15 +20,15 @@ def combined_hyp(base):
     cor = pd.read_csv(os.path.join(base, "ann_cmplx.txt"), sep="\t")
     cor["ANN"] = 1
     assert list(hypo) == list(cor)
-    combined = cor.append(hypo, ignore_index=True)
+    combined = pd.concat([hypo, cor])
     # now we fix the duplicate entry
-    # this is the issue, makes no sense now to do this
     combined["MB"].apply(lambda x: split_delim(x))
-    combined = (
-        combined.groupby("MB")
-        .agg({"CMPLT": "first", "ID": "#".join, "FT": "first", "ANN": "first"})
-        .reset_index()
-    )
+    # combined = (
+    #     combined.groupby("MB")
+    #     .agg({"CMPLT": "first", "ID": "#".join, "FT": "first", "ANN": "first"})
+    #     .reset_index()
+    # )
+    combined.drop_duplicates(subset=['MB'], keep='first', inplace=True)
     combined = combined[["ID", "MB", "FT", "ANN", "CMPLT"]]
     return combined
 
