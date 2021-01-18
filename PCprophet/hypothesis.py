@@ -4,6 +4,8 @@ import os
 import numpy as np
 import pandas as pd
 from scipy import cluster
+import uuid
+
 
 import PCprophet.stats_ as st
 import PCprophet.io_ as io
@@ -106,7 +108,7 @@ def format_cluster(hoa, clust):
     for gn in clust.values():
         if len(gn) > 1 and len(gn) <= 100:
             gn = [x if x in lk else re.sub("_\d+$", "", x) for x in gn]
-            out["#".join(gn)] = "#".join([lk[x] for x in gn])
+            out["#".join(gn)] = ["#".join([lk[x] for x in gn])]
     return out
 
 
@@ -122,8 +124,10 @@ def collapse_prot(infile, use):
     pr_df = io.create_df(prot2)
     z = decondense(pr_df, list(pr_df.index))
     hypothesis = format_cluster(prot, z)
+    hypo_df = pd.DataFrame.from_dict(hypothesis).T
+    hypo_df['ID'] = ["cmplx_" + str(uuid.uuid4()) for x in list(hypo_df.index)]
     #  return peaks2prot(hypothesis, prot),pr_df
-    return hypothesis, pr_df
+    return hypo_df, pr_df
 
 
 def runner(infile, hypothesis, use_fr):
@@ -134,8 +138,12 @@ def runner(infile, hypothesis, use_fr):
         print("Generating hypothesis for " + infile)
         hypo, df_s = collapse_prot(infile=infile, use=use_fr)
         base = io.file2folder(infile, prefix="./tmp/")
-        nm = os.path.join(base, "hypo.txt")
-        io.wrout(hypo, nm, ["ID", "MB", "FT"], is_hyp=True)
+        # nm = os.path.join(base, "hypo.txt")
+        hypo.reset_index(inplace=True)
+        hypo.columns = ["MB", "FT", "ID"]
+        hypo = hypo[["ID", "MB", "FT"]]
+        hypo.to_csv(os.path.join(base, "hypo.txt"), sep="\t", index=False)
+        # io.wrout(hypo, nm, ["ID", "MB", "FT"], is_hyp=True)
         df_s.to_csv(os.path.join(base, "splitted_transf.txt"), sep="\t")
         return True
     else:
