@@ -11,6 +11,8 @@ import PCprophet.io_ as io
 import PCprophet.stats_ as st
 
 
+np.seterr(all="ignore")
+
 class ProteinProfile(object):
     """
     docstring for ProteinProfile
