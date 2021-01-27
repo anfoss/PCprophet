@@ -329,7 +329,7 @@ def create_db_from_cluster(nodes, clusters):
     path = resource_path("./ppi_db.txt")
     create_file(path, header)
     for cmplx in clusters:
-        nm = ";".join([nodes[x] for x in list(cmplx)])
+        nm = ";".join([str(nodes[x]) for x in list(cmplx)])
         tmp = "_".join([ids, str(idx)])
         dump_file(path, "\t".join([str(idx), tmp, nm]))
         idx += 1
