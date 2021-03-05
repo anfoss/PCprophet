@@ -11,7 +11,7 @@ In the PCprophet package, all parameters can be configured either via the ‘Pro
 
 ## Input file
 
-Input file need to be a wide format matrix with two essential columns:
+The input file needs to be a wide format matrix with two essential columns:
 
 __GN__ : Gene name, needs to be the first column
 __ID__ : Uniprot identifier, needs to be the second column
