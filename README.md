@@ -22,23 +22,23 @@ We recommend using [anaconda](https://www.anaconda.com) as it contains the major
 Ensure that you have installed the GitHub tool and 'git-lfs' command specifically for large file transfer. Please see [here](https://gist.github.com/derhuerst/1b15ff4652a867391f03) for installing GitHub and [here](https://help.github.com/en/github/managing-large-files/installing-git-large-file-storage) for the installing 'git-lfs' command.
 
 ```
-git-lfs clone https://github.com/fossatiA/PCprophet PCprophet
+git-lfs clone https://github.com/anfoss/PCprophet PCprophet
 ```
 This will get you a working copy of PCprophet into a folder called PCprophet.
 
 ## Usage
 
-For usage of PCprophet, refer to the [PCprophet_instructions.md](https://github.com/fossatiA/PCprophet/blob/master/PCprophet_instructions.md).
+For usage of PCprophet, refer to the [PCprophet_instructions.md](https://github.com/anfoss/PCprophet/blob/master/PCprophet_instructions.md).
 
 
 ## Contributing
 
-Please read [CONTRIBUTING.md](https://github.com/fossatiA/PCprophet/blob/master/CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests to us.
+Please read [CONTRIBUTING.md](https://github.com/anfoss/PCprophet/blob/master/CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests to us.
 
 
 ## Authors
 
-* **Andrea Fossati** - *Initial work* - [fossatiA](https://github.com/fossatiA) andrea.fossati@ucsf.edu
+* **Andrea Fossati** - *Initial work* - [anfoss](https://github.com/anfoss) andrea.fossati@ucsf.edu
 * **Chen Li** - *Initial work* - chen.li@monash.edu
 
 

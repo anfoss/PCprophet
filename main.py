@@ -1,4 +1,4 @@
-# !/usr/bin/env python3
+#!/usr/bin/env python3
 
 import argparse
 import configparser
@@ -134,7 +134,7 @@ def create_config():
         choices=["True", "False"],
     )
     parser.add_argument("-w", dest="weight_pred", action="store", default=1, type=float)
-    parser.add_argument("-v", dest="verbose", action="store", default=0)
+    parser.add_argument("-v", dest="verbose", action="store", default=1)
     args = parser.parse_args()
 
     # deal with numpy warnings and so on
@@ -211,14 +211,14 @@ def main():
     validate.InputTester(config["GLOBAL"]["sid"], "ids").test_file()
     files = io.read_sample_ids(config["GLOBAL"]["sid"])
     files = [os.path.abspath(x) for x in files.keys()]
-    # if config["GLOBAL"]["mult"] == "True":
-    #     p = mult_proc.Pool(len(files))
-    #     preproc_conf = partial(preprocessing, config=config)
-    #     p.map(preproc_conf, files)
-    #     p.close()
-    #     p.join()
-    # else:
-    #     [preprocessing(infile, config) for infile in files]
+    if config["GLOBAL"]["mult"] == "True":
+         p = mult_proc.Pool(len(files))
+         preproc_conf = partial(preprocessing, config=config)
+         p.map(preproc_conf, files)
+         p.close()
+         p.join()
+    else:
+         [preprocessing(infile, config) for infile in files]
     collapse.runner(
         config["GLOBAL"]["temp"],
         config["GLOBAL"]["sid"],
