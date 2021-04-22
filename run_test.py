@@ -80,3 +80,9 @@ def test_collapse():
     )
     if not fin:
         assert False
+
+
+def main():
+
+if __name__ == '__main__':
+    main()

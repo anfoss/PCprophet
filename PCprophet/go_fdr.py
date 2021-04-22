@@ -88,6 +88,7 @@ def calc_pdf(decoy, target=None):
         max_iter=1000,
         random_state=42,
     )
+    print(X.shape)
     pred_ = clf.fit(X).predict(X.reshape(-1, 1)).reshape(-1, 1)
     return np.hstack((X, pred_))
 
@@ -174,14 +175,18 @@ def fdr_from_GO(cmplx_comb, target_fdr, fdrfile):
         go_cutoff = 0
         nm = list(hypo.index)
         # if empty then GMM
-        if db_use.empty:
+        if db_use.empty or np.all(np.array(thresh)==0):
             # we update nm here
-            print("Not enough reported for FDR estimation, using GMM model")
+            print("Not enough reported complexes for FDR estimation, using GMM model")
             # then we need to extract the go sum only
             go_hypo = hypo["TOTS"].values
-            predicted = calc_pdf(go_hypo)
-            tp, fp = split_posterior(predicted)
-            thresh_fdr, go_cutoff = fdr_from_pep(tp=tp, fp=fp, target_fdr=target_fdr)
+            if go_hypo.shape[0]>0:
+                predicted = calc_pdf(go_hypo)
+                tp, fp = split_posterior(predicted)
+                thresh_fdr, go_cutoff = fdr_from_pep(tp=tp, fp=fp, target_fdr=target_fdr)
+            else:
+                print("The GO term mapping went wrong. Double check the README to ensure correct input files\nFDR control will not be performed")
+                return filter_hypo(cmplx_comb, 0), zip([0], [0], [0])
         else:
             ppi_db = db2ppi(db_use["MB"])
             thresh_fdr, conf_m = calc_fdr(hypo, ppi_db, thresh)

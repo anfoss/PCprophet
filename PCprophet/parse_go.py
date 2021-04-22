@@ -57,7 +57,7 @@ def blocks_iter(lines):
     for line in lines:
         m = re.search(termdef, line)
         if m:
-            if type_ is not None and content:
+            if type_ != None and content:
                 yield {"type": type_, "content": content[:]}
             type_ = m.group(1)
             content.clear()
@@ -134,9 +134,9 @@ def read_gaf_out(go_path):
             pr = str.upper(temp["GN"])
             for k in temp.keys():
                 # if the key is the same
-                if out[pr][k] and k is not "ID" or "GN":
+                if out[pr][k] and k != "ID" or "GN":
                     out[pr][k] = ";".join([str(out[pr][k]), temp[k]])
-                elif k is not "ID" or "GN":
+                elif k != "ID" or "GN":
                     out[pr][k] = temp[k]
     return out
 
@@ -195,7 +195,7 @@ def parse_go(gn, gaf, go_type):
     except AttributeError as e:
         tmp.append("NA")
     tmp = list(set(tmp))
-    return [x for x in tmp if x is not "NA"]
+    return [x for x in tmp if x != "NA"]
 
 
 def scr(G, gaf, id1, id2, go_type):
