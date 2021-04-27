@@ -89,7 +89,7 @@ In this case a Markov clustering is first performed to generate putative complex
 **-co CAL** Extrapolates the molecular weight from the apex peak for the reported complex using the calibration provided. Then selects the complex with the closer mass to the theoretical weight. If for example extrapolated MW for these set of complexes is 200000 Da then A,B,C will be selected
 
 To use CAL it is necessary to pass also the mw_uniprot flag. Just add 'Mass' as a column in uniprot and export in tab format and rename to .txt.
-___There are two columns which are needed 'Gene names' which holds your identifiers (whether real gene names or protein accession) and 'Mass' which contains all masses as , separated numbers___ 
+___There are two columns which are needed 'Gene names' which holds your identifiers (whether real gene names or protein accession) and 'Mass' which contains all masses as , separated numbers___
 
 
 > **Note:** __We recommend using collapsing based on calibration curve and molecular weight as this enforces the correct mass distribution but ONLY if a calibration curve covering all molecular weight range of the column is available. Extrapolation outside the standard leads to wrong molecular weight estimation__
@@ -108,7 +108,11 @@ All of the above parameters have the following default settings
 | -is_ppi        | 'False'           |[True, False]                         |
 | -ma            | 'all'             |['all', 'reference']                  |
 | -co            | 'GO'              |['GO','SUPER','CAL','eCAL','PROB' 'NONE']|
-| -fdr           | 0.5              |0>x>1                                 |
+| -fdr           | 0.5               |0>x>1                                 |
+| -mult          | False             | [True, False]                        |
+| -v             | True              | [True, False]                        |
+| -skip          | False             | [True, False]                        |
+
 
 all parameters can be inspected using
 
@@ -220,51 +224,11 @@ Depending on the error raised different fixes are needed.
 * __Why in ComplexReport.txt the complexID has several complexes concatenated by # ?__ We are using the parsimony principle, thereby complexes for which there are not enough evidence (i.e with the same subunits identified across the experiment) are reported in the same complex group
 
 
-* __I want to search with several different FDR and collapse method but it took long time to generate the features__ The modular organization of PCprophet makes it easy to skip certain modules. For example re-run with FDR of 50%.
-- Open main.py in a text editor and go to the main () function.
-
-Here comment the preprocessing call out:
-```
-def main():
-    config = create_config()
-    validate.InputTester(config['GLOBAL']['db'], 'db').test_file()
-    validate.InputTester(config['GLOBAL']['sid'], 'ids').test_file()
-    files = io.read_sample_ids(config['GLOBAL']['sid'])
-    files = [os.path.abspath(x) for x in files.keys()]
-    # if config['GLOBAL']['mult'] == 'True':
-    #     p = mult_proc.Pool(len(files))
-    #     preproc_conf=partial(preprocessing, config=config)
-    #     p.map(preproc_conf, files)
-    #     p.close()
-    #     p.join()
-    # else:
-    #     [preprocessing(infile, config) for infile in files]
-    collapse.runner(
-        config['GLOBAL']['temp'],
-        config['GLOBAL']['sid'],
-        config['GLOBAL']['cal'],
-        config['GLOBAL']['mw'],
-        config['POSTPROCESS']['fdr'],
-        config['POSTPROCESS']['collapse_mode'],
-    )
-    combined_file = os.path.join(config['GLOBAL']['temp'], 'combined.txt')
-    differential.runner(
-        combined_file,
-        config['GLOBAL']['sid'],
-        config['GLOBAL']['Output'],
-        config['GLOBAL']['temp']
-    )
-    plots.runner(
-        config['GLOBAL']['temp'],
-        config['GLOBAL']['Output'],
-        config['POSTPROCESS']['fdr'],
-        config['GLOBAL']['sid'],
-    )
-```
-and you are set for success, just run PCprophet as usual and specify the new fdr
+* __I want to search with several different FDR and collapse method but it took long time to generate the features__ The modular organization of PCprophet makes it easy to skip certain modules. The ___-skip___ flag allows to skip feature generation and go straight to the complex combination and collapsing step.
+For example re-run with FDR of 50%.
 
 ```
-python3 main.py -fdr 0.5
+python3 main.py -skip True -fdr 0.5
 
 ```
 

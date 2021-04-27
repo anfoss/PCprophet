@@ -135,6 +135,7 @@ def create_config():
     )
     parser.add_argument("-w", dest="weight_pred", action="store", default=1, type=float)
     parser.add_argument("-v", dest="verbose", action="store", default=1)
+    parser.add_argument("-skip", dest="skip", action="store", default=False)
     args = parser.parse_args()
 
     # deal with numpy warnings and so on
@@ -156,6 +157,7 @@ def create_config():
         "mw": args.mwuni,
         "temp": r"./tmp",
         "mult": args.multi,
+        'skip': args.skip
     }
     config["PREPROCESS"] = {
         "is_ppi": args.is_ppi,
@@ -175,7 +177,6 @@ def create_config():
         "weight_ratio": 0.25,
         "weight_shift": 0.5,
     }
-
     # create config ini file for backup
     with open("ProphetConfig.conf", "w") as conf:
         config.write(conf)
@@ -211,14 +212,16 @@ def main():
     validate.InputTester(config["GLOBAL"]["sid"], "ids").test_file()
     files = io.read_sample_ids(config["GLOBAL"]["sid"])
     files = [os.path.abspath(x) for x in files.keys()]
-    if config["GLOBAL"]["mult"] == "True":
-         p = mult_proc.Pool(len(files))
-         preproc_conf = partial(preprocessing, config=config)
-         p.map(preproc_conf, files)
-         p.close()
-         p.join()
-    else:
-         [preprocessing(infile, config) for infile in files]
+    # skip feature generation
+    if config['GLOBAL']['skip'] == False:
+        if config["GLOBAL"]["mult"] == "True":
+             p = mult_proc.Pool(len(files))
+             preproc_conf = partial(preprocessing, config=config)
+             p.map(preproc_conf, files)
+             p.close()
+             p.join()
+        else:
+             [preprocessing(infile, config) for infile in files]
     collapse.runner(
         config["GLOBAL"]["temp"],
         config["GLOBAL"]["sid"],

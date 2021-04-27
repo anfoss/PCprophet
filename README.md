@@ -45,6 +45,8 @@ Please read [CONTRIBUTING.md](https://github.com/anfoss/PCprophet/blob/master/CO
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
+If used please cite
+Fossati, A., Li, C., Uliana, F., Wendt, F., Frommelt, F., Sykacek, P., Heusel, M., Hallal, M., Bludau, I., Capraz, T., Xue, P., Song, J., Wollscheid, B., Purcell, A. W., Gstaiger, M., & Aebersold, R. (2021). PCprophet: a framework for protein complex prediction and differential analysis using proteomic data. Nature Methods, 13. https://doi.org/10.1038/s41592-021-01107-5
 
 ## Acknowledgments
 
