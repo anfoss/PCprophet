@@ -27,10 +27,13 @@ def test_model():
 
 
 # old rf_equal.clf
-def runner(base, model="./PCprophet/rf_allneg.clf"):
+def runner(base, model=None):
     """
     get model file and run prediction
     """
+
+    if model is None:
+        model = os.path.join(os.path.dirname(os.path.realpath(__file__)),"rf_allneg.clf")
     infile = os.path.join(base, "mp_feat_norm.txt")
     X, memo = io.prepare_feat(infile)
     clf = deserialize(model)

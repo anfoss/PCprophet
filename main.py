@@ -133,9 +133,12 @@ def create_config():
         default="True",
         choices=["True", "False"],
     )
-    parser.add_argument("-w", dest="weight_pred", action="store", default=1, type=float)
-    parser.add_argument("-v", dest="verbose", action="store", default=1)
-    parser.add_argument("-skip", dest="skip", action="store", default=False)
+    parser.add_argument("-w", dest="weight_pred", help='LEGACY' action="store", default=1, type=float)
+    parser.add_argument("-v", dest="verbose", help='Verbose', action="store", default=1)
+    parser.add_argument("-skip",
+                        dest="skip",
+                        help='Skip feature generation and complex prediction step',action="store",
+                        default=False)
     args = parser.parse_args()
 
     # deal with numpy warnings and so on
