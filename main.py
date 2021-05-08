@@ -133,7 +133,7 @@ def create_config():
         default="True",
         choices=["True", "False"],
     )
-    parser.add_argument("-w", dest="weight_pred", help='LEGACY' action="store", default=1, type=float)
+    parser.add_argument("-w", dest="weight_pred", help='LEGACY', action="store", default=1, type=float)
     parser.add_argument("-v", dest="verbose", help='Verbose', action="store", default=1)
     parser.add_argument("-skip",
                         dest="skip",
