@@ -130,7 +130,7 @@ def create_config():
         help="Multi processing",
         dest="multi",
         action="store",
-        default="True",
+        default="False",
         choices=["True", "False"],
     )
     parser.add_argument("-w", dest="weight_pred", help='LEGACY', action="store", default=1, type=float)
@@ -216,7 +216,7 @@ def main():
     files = io.read_sample_ids(config["GLOBAL"]["sid"])
     files = [os.path.abspath(x) for x in files.keys()]
     # skip feature generation
-    if config['GLOBAL']['skip'] == False:
+    if config['GLOBAL']['skip'] == 'False':
         if config["GLOBAL"]["mult"] == "True":
              p = mult_proc.Pool(len(files))
              preproc_conf = partial(preprocessing, config=config)
