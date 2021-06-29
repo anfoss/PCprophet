@@ -106,12 +106,10 @@ def from_obo_lines(lines, ignore_obsolete=True):
     assert G.number_of_edges(), "The graph has no edges"
     return G
 
-
 def from_obo(pathlike, **kwargs):
     with open(pathlike, "rt") as f:
         G = from_obo_lines(f, **kwargs)
     return G
-
 
 def read_gaf_out(go_path):
     """
@@ -224,7 +222,8 @@ def combine_all(G, gaf, t):
     # add to out the mean of the three Ontologies
     # TODO check mean or sum
     out.append(sum(out))
-    return "\t".join([str(x) for x in out])
+    return out
+    #return "\t".join([str(x) for x in out])
 
 
 def common_parent(terms, go):
