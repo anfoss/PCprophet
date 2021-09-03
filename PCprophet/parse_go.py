@@ -26,8 +26,7 @@ class GoGraph(nx.DiGraph):
 
 
 def parse_block(lines):
-    """Parse a Term block
-    """
+    """Parse a Term block"""
     term = {"alt_id": [], "relationship": []}
     splitkv = re.compile(r"(^[a-zA-Z_]+): (.+)")
     for line in lines:
@@ -49,8 +48,7 @@ def parse_block(lines):
 
 
 def blocks_iter(lines):
-    """Iterate Term (and Typedef) blocks
-    """
+    """Iterate Term (and Typedef) blocks"""
     type_ = None
     content = []
     termdef = re.compile(r"^\[([a-zA-Z_]+?)\]$")
@@ -106,10 +104,12 @@ def from_obo_lines(lines, ignore_obsolete=True):
     assert G.number_of_edges(), "The graph has no edges"
     return G
 
+
 def from_obo(pathlike, **kwargs):
     with open(pathlike, "rt") as f:
         G = from_obo_lines(f, **kwargs)
     return G
+
 
 def read_gaf_out(go_path):
     """
@@ -223,7 +223,7 @@ def combine_all(G, gaf, t):
     # TODO check mean or sum
     out.append(sum(out))
     return out
-    #return "\t".join([str(x) for x in out])
+    # return "\t".join([str(x) for x in out])
 
 
 def common_parent(terms, go):

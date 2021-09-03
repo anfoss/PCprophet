@@ -13,11 +13,11 @@ import uuid
 
 def makehash(w=dict):
     """autovivification like hash in perl
-     http://stackoverflow.com/questions/651794/whats-the-best-way-to-initialize-a-dict-of-dicts-in-python
-     use call it on hash like h = makehash()
-     then directly
-     h[1][2]= 3
-     useful ONLY for a 2 level hash
+    http://stackoverflow.com/questions/651794/whats-the-best-way-to-initialize-a-dict-of-dicts-in-python
+    use call it on hash like h = makehash()
+    then directly
+    h[1][2]= 3
+    useful ONLY for a 2 level hash
     """
     # return defaultdict(makehash)
     return defaultdict(w)
@@ -25,11 +25,11 @@ def makehash(w=dict):
 
 def makedeephash():
     """autovivification like hash in perl
-     http://stackoverflow.com/questions/651794/whats-the-best-way-to-initialize-a-dict-of-dicts-in-python
-     use call it on hash like h = makehash()
-     then directly
-     h[1][2]= 3
-     useful ONLY for a 2 level hash
+    http://stackoverflow.com/questions/651794/whats-the-best-way-to-initialize-a-dict-of-dicts-in-python
+    use call it on hash like h = makehash()
+    then directly
+    h[1][2]= 3
+    useful ONLY for a 2 level hash
     """
     # return defaultdict(makehash)
     return defaultdict(makedeephash)
@@ -37,11 +37,11 @@ def makedeephash():
 
 def makehashlist():
     """autovivification like hash in perl
-     http://stackoverflow.com/questions/651794/whats-the-best-way-to-initialize-a-dict-of-dicts-in-python
-     use call it on hash like h = makehash()
-     then directly
-     h[1][2]= 3
-     useful ONLY for a 2 level hash
+    http://stackoverflow.com/questions/651794/whats-the-best-way-to-initialize-a-dict-of-dicts-in-python
+    use call it on hash like h = makehash()
+    then directly
+    h[1][2]= 3
+    useful ONLY for a 2 level hash
     """
     # return defaultdict(makehash)
     return defaultdict(list)
@@ -49,11 +49,11 @@ def makehashlist():
 
 def makehashset():
     """autovivification like hash in perl
-     http://stackoverflow.com/questions/651794/whats-the-best-way-to-initialize-a-dict-of-dicts-in-python
-     use call it on hash like h = makehash()
-     then directly
-     h[1][2]= 3
-     useful ONLY for a 2 level hash
+    http://stackoverflow.com/questions/651794/whats-the-best-way-to-initialize-a-dict-of-dicts-in-python
+    use call it on hash like h = makehash()
+    then directly
+    h[1][2]= 3
+    useful ONLY for a 2 level hash
     """
     # return defaultdict(makehash)
     return defaultdict(set)

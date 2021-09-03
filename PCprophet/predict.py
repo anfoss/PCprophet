@@ -33,7 +33,9 @@ def runner(base, model=None):
     """
 
     if model is None:
-        model = os.path.join(os.path.dirname(os.path.realpath(__file__)),"rf_allneg.clf")
+        model = os.path.join(
+            os.path.dirname(os.path.realpath(__file__)), "rf_allneg.clf"
+        )
     infile = os.path.join(base, "mp_feat_norm.txt")
     X, memo = io.prepare_feat(infile)
     clf = deserialize(model)

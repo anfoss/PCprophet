@@ -740,8 +740,7 @@ def assembled(df, thr=0.3):
 
 
 def runner(infile, sample, outf, temp):
-    """
-    """
+    """ """
     if not os.path.isdir(outf):
         os.makedirs(outf)
     ids = io.read_sample_ids_diff(sample)

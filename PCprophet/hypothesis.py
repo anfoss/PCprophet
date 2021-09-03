@@ -125,7 +125,7 @@ def collapse_prot(infile, use):
     z = decondense(pr_df, list(pr_df.index))
     hypothesis = format_cluster(prot, z)
     hypo_df = pd.DataFrame.from_dict(hypothesis).T
-    hypo_df['ID'] = ["cmplx_" + str(uuid.uuid4()) for x in list(hypo_df.index)]
+    hypo_df["ID"] = ["cmplx_" + str(uuid.uuid4()) for x in list(hypo_df.index)]
     #  return peaks2prot(hypothesis, prot),pr_df
     return hypo_df, pr_df
 

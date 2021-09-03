@@ -28,7 +28,7 @@ def combined_hyp(base):
     #     .agg({"CMPLT": "first", "ID": "#".join, "FT": "first", "ANN": "first"})
     #     .reset_index()
     # )
-    combined.drop_duplicates(subset=['MB'], keep='first', inplace=True)
+    combined.drop_duplicates(subset=["MB"], keep="first", inplace=True)
     combined = combined[["ID", "MB", "FT", "ANN", "CMPLT"]]
     return combined
 

@@ -139,7 +139,6 @@ Input/
 Output/
 tmp/
 
-# ignore Rstuff
 
 .Rhistory
 Hela/*
@@ -155,3 +154,4 @@ main_test.py
 PCprophet/tmp_GO_sp_only.txt
 ppi_network.GraphML
 main_GUI.py
+training_data/*

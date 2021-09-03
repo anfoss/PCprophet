@@ -90,16 +90,20 @@ class ComplexProfile(object):
         """
         yields one formatted row with pks sel and id
         """
-        mb,id,pks,sel = [], [], [], []
+        mb, id, pks, sel = [], [], [], []
         for k in self.pks.keys():
             mb.append(k)
             id.append(self.get_name())
-            pks.append(self.pks[k].split('\t')[0])
-            sel.append(self.pks[k].split('\t')[1])
+            pks.append(self.pks[k].split("\t")[0])
+            sel.append(self.pks[k].split("\t")[1])
         return mb, id, pks, sel
 
     def calc_go_score(self, goobj, gaf):
-        self.score = go.combine_all(goobj, gaf, np.array(self.get_members()),)
+        self.score = go.combine_all(
+            goobj,
+            gaf,
+            np.array(self.get_members()),
+        )
 
     def format_ids(self):
         """
@@ -205,17 +209,18 @@ class ComplexProfile(object):
         members = self.format_ids()
         # self.score = self.score.split('\t')
         # assert False
-        return (row_id,
-                members,
-                cor_conc,
-                self.shifts,
-                dif_conc,
-                self.width,
-                self.score[0],
-                self.score[1],
-                self.score[2],
-                self.score[3]
-                )
+        return (
+            row_id,
+            members,
+            cor_conc,
+            self.shifts,
+            dif_conc,
+            self.width,
+            self.score[0],
+            self.score[1],
+            self.score[2],
+            self.score[3],
+        )
 
 
 def add_top(result, item):
@@ -229,7 +234,7 @@ def add_top(result, item):
 
 
 def minimize(solution):
-    """Returns total difference of solution passed """
+    """Returns total difference of solution passed"""
     length = len(solution)
     result = 0
     for index, number1 in enumerate(solution):
@@ -329,6 +334,7 @@ def format_hash(temp):
         tmp.add_member(protein)
     return tmp
 
+
 def gen_feat(s, goobj, gaf):
     """
     receive a single row and generate feature calc
@@ -340,17 +346,20 @@ def gen_feat(s, goobj, gaf):
         cmplx.pairwise()
         return cmplx.create_row()
 
+
 def gen_peaks(s):
     cmplx = format_hash(s)
     if cmplx.test_complex() and cmplx.align_peaks():
         return cmplx.get_complex_peaks()
 
-def process_slice(df, goobj, gaf, mode='feature'):
+
+def process_slice(df, goobj, gaf, mode="feature"):
     # trick to return multiple dfs
-    if mode=='feature':
-        return df.apply(lambda x:gen_feat(x, goobj, gaf), axis=1)
-    elif mode=='peak':
+    if mode == "feature":
+        return df.apply(lambda x: gen_feat(x, goobj, gaf), axis=1)
+    elif mode == "peak":
         return df.apply(gen_peaks, axis=1)
+
 
 # wrapper
 def mp_cmplx(filename, goobj, gaf, mult):
@@ -365,21 +374,32 @@ def mp_cmplx(filename, goobj, gaf, mult):
     """
     things, header = [], []
     temp = {}
-    df = pd.read_csv(filename, sep='\t')
-    if mult==False:
+    df = pd.read_csv(filename, sep="\t")
+    if mult == False:
         npartitions = 1
     else:
-        npartitions=8
+        npartitions = 8
     sd = dd.from_pandas(df, npartitions=npartitions)
     print("calculating features for " + filename)
-    feats = pd.DataFrame(sd.map_partitions(lambda df: process_slice(df, goobj, gaf), meta=(None, 'object')).compute(scheduler='processes').values.tolist())
-    h = [ 'ID', 'MB', 'COR', 'SHFT', 'DIF',
-          'W', 'SC_CC', 'SC_MF', 'SC_BP', 'TOTS']
+    feats = pd.DataFrame(
+        sd.map_partitions(
+            lambda df: process_slice(df, goobj, gaf), meta=(None, "object")
+        )
+        .compute(scheduler="processes")
+        .values.tolist()
+    )
+    h = ["ID", "MB", "COR", "SHFT", "DIF", "W", "SC_CC", "SC_MF", "SC_BP", "TOTS"]
     feats.columns = h
-    pks = pd.DataFrame(sd.map_partitions(lambda df: process_slice(df, None, None, 'peak'), meta=(None, 'object')).compute(scheduler='processes').values.tolist())
+    pks = pd.DataFrame(
+        sd.map_partitions(
+            lambda df: process_slice(df, None, None, "peak"), meta=(None, "object")
+        )
+        .compute(scheduler="processes")
+        .values.tolist()
+    )
     pks = pks.apply(pd.Series.explode).reset_index()
-    pks.columns = ['index', 'MB', 'ID', 'PKS','SEL']
-    pks.drop('index', axis=1, inplace=True)
+    pks.columns = ["index", "MB", "ID", "PKS", "SEL"]
+    pks.drop("index", axis=1, inplace=True)
     return feats, pks
 
 
@@ -395,8 +415,8 @@ def runner(base, go_obo, tsp_go, mult):
     # print(os.path.dirname(os.path.realpath(__file__)))
     feat, pks = mp_cmplx(filename=cmplx_comb, goobj=go_tree, gaf=gaf, mult=mult)
     feature_path = os.path.join(base, "mp_feat_norm.txt")
-    feat.to_csv(feature_path, sep='\t', index=False)
+    feat.to_csv(feature_path, sep="\t", index=False)
     peaklist_path = os.path.join(base, "peak_list.txt")
     # peaklist_path = peaklist_path
-    pks.to_csv(peaklist_path, sep='\t', index=False)
+    pks.to_csv(peaklist_path, sep="\t", index=False)
     return True

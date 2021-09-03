@@ -8,8 +8,7 @@ import PCprophet.stats_ as st
 
 
 def smart_makefold(path, folder):
-    """
-    """
+    """ """
     pl_dir = os.path.join(path, folder)
     if not os.path.isdir(pl_dir):
         os.makedirs(pl_dir)
@@ -61,7 +60,11 @@ def plot_repl_prof(filt, fold, cols):
         axrow.grid(color="grey", linestyle="--", linewidth=0.25, alpha=0.5)
         for index, row in filt2.iterrows():
             axrow.plot(
-                fractions, row["reINT"], "-", lw=1, label=str(row["ID"]),
+                fractions,
+                row["reINT"],
+                "-",
+                lw=1,
+                label=str(row["ID"]),
             )
         # remove highlight for peak area of positive
         # if np.median(filt2["P"].values >= 0.5):
@@ -75,7 +78,10 @@ def plot_repl_prof(filt, fold, cols):
     plt.rcParams["grid.linewidth"] = 0.5
     repl = set(filt["REPL"])
     fig, axes = plt.subplots(
-        len(set(repl)), figsize=(9, 9), facecolor="white", sharex=True,
+        len(set(repl)),
+        figsize=(9, 9),
+        facecolor="white",
+        sharex=True,
     )
     if len(repl) == 1:
         axes = [axes]
@@ -106,7 +112,9 @@ def plot_repl_prof(filt, fold, cols):
     plotname = os.path.join(fold, cnd[0], "%s.pdf" % str(ids))
     try:
         fig.savefig(
-            plotname, dpi=800, bbox_inches="tight",
+            plotname,
+            dpi=800,
+            bbox_inches="tight",
         )
     except OSError as exc:
         # catch name too long
@@ -114,7 +122,9 @@ def plot_repl_prof(filt, fold, cols):
             ids = ids.split("#")[0]
             plotname = os.path.join(fold, cnd[0], "%s.pdf" % str(ids))
             fig.savefig(
-                plotname, dpi=800, bbox_inches="tight",
+                plotname,
+                dpi=800,
+                bbox_inches="tight",
             )
         else:
             raise exc
