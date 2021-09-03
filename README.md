@@ -12,6 +12,7 @@ These instructions will guide you to obtain a copy of the project, to run on you
 * [NetworkX v2.4](https://networkx.github.io)
 * [Pandas >0.23](https://pandas.pydata.org)
 * [Scipy >1.5.2](https://www.scipy.org)
+* [Dask > 2.30.0](https://dask.org)
 
 ### Installing
 
