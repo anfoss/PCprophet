@@ -335,6 +335,13 @@ def format_hash(temp):
     return tmp
 
 
+def create_dummy_row(mode='feature'):
+    if mode == 'feature':
+        return (-1, -1, -1, -1, -1, -1,-1,-1,-1,-1)
+    elif mode == 'peaks':
+        return (-1, -1, -1, -1)
+
+
 def gen_feat(s, goobj, gaf):
     """
     receive a single row and generate feature calc
@@ -345,12 +352,16 @@ def gen_feat(s, goobj, gaf):
         cmplx.calc_width()
         cmplx.pairwise()
         return cmplx.create_row()
+    else:
+        return create_dummy_row('feature')
 
 
 def gen_peaks(s):
     cmplx = format_hash(s)
     if cmplx.test_complex() and cmplx.align_peaks():
         return cmplx.get_complex_peaks()
+    else:
+        return create_dummy_row('peaks')
 
 
 def process_slice(df, goobj, gaf, mode="feature"):
@@ -390,6 +401,7 @@ def mp_cmplx(filename, goobj, gaf, mult):
     )
     h = ["ID", "MB", "COR", "SHFT", "DIF", "W", "SC_CC", "SC_MF", "SC_BP", "TOTS"]
     feats.columns = h
+    feats = feats[feats['ID']!=-1]
     pks = pd.DataFrame(
         sd.map_partitions(
             lambda df: process_slice(df, None, None, "peak"), meta=(None, "object")
@@ -399,6 +411,7 @@ def mp_cmplx(filename, goobj, gaf, mult):
     )
     pks = pks.apply(pd.Series.explode).reset_index()
     pks.columns = ["index", "MB", "ID", "PKS", "SEL"]
+    pks = pks[pks['ID']!=-1]
     pks.drop("index", axis=1, inplace=True)
     return feats, pks
 
