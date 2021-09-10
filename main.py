@@ -199,7 +199,7 @@ def preprocessing(infile, config):
     )
     #  # sample specific folder
     tmp_folder = io.file2folder(infile, prefix=config['GLOBAL']['temp'])
-    # merge.runner(base=tmp_folder, mergemode=config['PREPROCESS']['merge'])
+    merge.runner(base=tmp_folder, mergemode=config['PREPROCESS']['merge'])
     generate_features.runner(
         tmp_folder,
         config['GLOBAL']['go_obo'],

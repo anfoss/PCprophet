@@ -17,7 +17,7 @@ setup_args = dict(
         'PCprophet/collapse.py',
         'PCprophet/differential.py',
         'PCprophet/exceptions.py',
-        'PCprophet/generate_features.py',
+        'PCprophet/generate_features_v2.py',
         'PCprophet/go_fdr.py',
         'PCprophet/io_.py',
         'PCprophet/hypothesis.py',
@@ -26,7 +26,7 @@ setup_args = dict(
         'PCprophet/map_to_database.py',
         'PCprophet/mcl.py',
         'PCprophet/merge.py',
-        'PCprophet/parse_GO.py',
+        'PCprophet/parse_go.py',
         'PCprophet/main.py',
         'PCprophet/plots.py',
         'PCprophet/predict.py',
@@ -35,15 +35,13 @@ setup_args = dict(
     ],
     # long_description=long_description,
     license='MIT',
-    # Project uses reStructuredText, so ensure that the docutils get
-    # installed or upgraded on the target machine
-    install_requires=['scipy>=1.1', 'pandas', 'sklearn', 'networkX'],
+    install_requires=['scipy>=1.1', 'pandas', 'sklearn', 'networkX', 'dask>=2.30'],
     package_data={
         'PCprophet': ['go_term_class.txt', 'go-basic.obo', 'rf_equal.clf'],
     },
     # metadata to display on PyPI
     author='Andrea Fossati',
-    author_email='fossati@imsb.biol.ethz.ch',
+    author_email='andrea.fossati@ucsf.edu',
     description='Software toolset for analysis of co-fractionation data',
     keywords=['proteomics', 'machine-learning', 'signal-processing'],
     url='https://github.com/fossatiA/PCProphet/',
