@@ -26,7 +26,7 @@ def center_arr(hoa, fr_nr="all", smooth=True, stretch=(True, 72), resc=True):
             key = st.resample(key, len(key), output_fr=stretch[1])
         if resc:
             key = st.resize(key)
-        norm[k] = list(key)
+        norm[str.upper(k)] = list(key)
     return norm
 
 
