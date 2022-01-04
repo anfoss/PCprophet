@@ -155,3 +155,6 @@ PCprophet/tmp_GO_sp_only.txt
 ppi_network.GraphML
 main_GUI.py
 training_data/*
+PCprophet/*.txt
+PCprophet/go_term_class.txt
+PCprophet/go-basic.obo
