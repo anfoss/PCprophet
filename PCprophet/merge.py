@@ -10,7 +10,6 @@ def split_delim(dels):
     x_.sort()
     return "#".join(x_)
 
-
 def combined_hyp(base):
     #  base = io.resource_path(base)
     hypo = pd.read_csv(os.path.join(base, "hypo.txt"), sep="\t")

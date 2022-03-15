@@ -185,7 +185,7 @@ def create_config():
 
 
 def preprocessing(infile, config):
-    validate.InputTester(infile, 'in').test_file()
+    #validate.InputTester(infile, 'in').test_file()
     map_to_database.runner(
         infile=infile,
         db=config['GLOBAL']['db'],
