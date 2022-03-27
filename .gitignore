@@ -158,3 +158,7 @@ training_data/*
 PCprophet/*.txt
 PCprophet/go_term_class.txt
 PCprophet/go-basic.obo
+PCprophet/tmp_GO_sp_only.txt
+ppi_db.txt
+ppi_PA_acc.txt
+sample_ids*
