@@ -274,7 +274,12 @@ class BayesMANOVA:
             for cpidx in cplx2pids.keys():
                 # generate the aggregated measurements and labels for cpidx
                 pids = cplx2pids[cpidx]
-                y = pids2dat[pids[0]].y
+                try:
+                    y = pids2dat[pids[0]].y
+                except Exception as e:
+                    print(pids)
+                    print(cpidx)
+                    raise e
                 X = pids2dat[pids[0]].X
                 unqlbs = list(set(y))
                 # two dicts for collecting the data.
@@ -314,7 +319,7 @@ def prepcplxdata(
     cplxcol,
     trgcol,
     valcols,
-    dologtrans=True,
+    dologtrans=False,
     minval=10 ** -17,
     trg2indmap=True,
 ):
@@ -347,10 +352,7 @@ def prepcplxdata(
         objects which describe the data for that protein.
     """
     ## remove single elements from complexes
-    print(dfrm.shape)
-    dfrm = dfrm.groupby(['CMPLX', 'COND']).filter(lambda x: x.shape[0] > 1).reset_index()
-    print(dfrm.shape)
-
+    dfrm.dropna(subset=[cplxcol], inplace=True)
     allpids = dfrm[pidcol].tolist()
     pids = list(set(allpids))
     allcpx = dfrm[cplxcol].tolist()
@@ -359,6 +361,7 @@ def prepcplxdata(
     # prepare genrating a dict which maps complex ids to protein ids.
     allpids = np.array(allpids)
     allcpx = np.array(allcpx)
+    # BUG here nans?
     for cplid in cpx:
         cplx2pids[cplid] = allpids[allcpx == cplid].tolist()
     alltrgs = dfrm[trgcol].tolist()
