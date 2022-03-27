@@ -314,7 +314,7 @@ def prepcplxdata(
     cplxcol,
     trgcol,
     valcols,
-    dologtrans=False,
+    dologtrans=True,
     minval=10 ** -17,
     trg2indmap=True,
 ):
@@ -346,6 +346,10 @@ def prepcplxdata(
     pids2dat: dictionary which maps pids (protein ids) to DataRec
         objects which describe the data for that protein.
     """
+    ## remove single elements from complexes
+    print(dfrm.shape)
+    dfrm = dfrm.groupby(['CMPLX', 'COND']).filter(lambda x: x.shape[0] > 1).reset_index()
+    print(dfrm.shape)
 
     allpids = dfrm[pidcol].tolist()
     pids = list(set(allpids))
@@ -427,7 +431,7 @@ def score_complexes(
         return bpdr_cplx_fl
 
 
-def extract_local_peak(row, q, mode, norm=False):
+def extract_local_peak(row, q, mode, norm=True):
     """
     extract local peak from SEL column and returns peaks around +-q fractions
     if not possible extract 10
@@ -752,7 +756,8 @@ def runner(infile, sample, outf, temp):
     create_ppi_report(infile=complex_report_out, outfile=ppi_report_out)
     if len(list(ids.keys())) == 1:
         return True
-    dif_cmplx, dif_prot = differential_(infile, "abu", ids)
+    ## change me!
+    dif_cmplx, dif_prot = differential_(infile, "asm", ids)
     complex_report_out = pd.read_csv(complex_report_out, sep="\t")
     complex_report_out = complex_report_out[
         ["Sample_ID", "Replicate", "Is Complex", "ComplexID", "Members"]
