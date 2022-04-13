@@ -319,7 +319,7 @@ def prepcplxdata(
     cplxcol,
     trgcol,
     valcols,
-    dologtrans=False,
+    dologtrans=True,
     minval=10 ** -17,
     trg2indmap=True,
 ):

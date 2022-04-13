@@ -48,7 +48,7 @@ class ProphetExperiment(object):
     ):
         super(ProphetExperiment, self).__init__()
         self.feature = pd.read_csv(feature, sep="\t", index_col="ID")
-        self.peaks = pd.read_csv(peaks, sep="\t", index_col="MB", error_bad_lines=False)
+        self.peaks = pd.read_csv(peaks, sep="\t", index_col="MB")
         self.pred = pd.read_csv(pred, sep="\t", index_col="ID")
         self.prot_matrix = pd.read_csv(prot_matrix, sep="\t", index_col="ID")
         self.raw = pd.read_csv(raw, sep="\t", index_col="ID")
@@ -422,36 +422,25 @@ class MultiExperiment(object):
         self.protein_c = pd.concat([self.protein_c, allprot], ignore_index=True)
         return self.protein_c
 
-
-def smart_rename(dic):
-    """
-    assign MW in MDa or KDa depending on the string
-    """
-    for k in dic:
-        if len(dic[k].split(".")[0]) > 6:
-            dic[k] = str(round(float(dic[k]) / 1000000, 2)) + " MDa"
-        else:
-            dic[k] = str(round(float(dic[k]) / 1000, 2)) + " KDa"
-    return dic
-
-
 def calc_calibration(calpath):
     """
     calculate the calibration curve from a file with fraction and
     return a dict fract
     """
-    fr, mw = io.read_cal(calpath)
-    mw = np.array([np.log10(x * 1000) for x in mw])
-    fr = np.array(fr)
-    f = interpolate.UnivariateSpline(fr, mw, k=1)
-    xnew = np.array(list(range(1, 73)))
-    cal_d = dict(zip(xnew, f(xnew)))
-    cal_d = {k: round(10 ** v, 2) for k, v in cal_d.items()}
-    calout = "cal.txt"
-    io.create_file(calout, ["FR", "MW"])
-    k = smart_rename({str(x): str(v) for x, v in cal_d.items()})
-    [io.dump_file(calout, "\t".join([x, k[x]])) for x in list(k.keys())]
-    return cal_d
+    from sklearn.linear_model import LinearRegression
+    calp = pd.read_csv(calpath, sep='\t', header=None)
+    fr, mw = list(calp[0]), list(calp[1])
+    mw = np.array([np.log10(x*1000) for x in mw]).reshape(-1, 1)
+    fr = np.array(fr).reshape(-1, 1)
+    lr = LinearRegression().fit(fr.reshape(-1,1), mw.reshape(-1,1))
+    xnew = list(range(1, 73))
+    print('R2 score for calibration regression is {}'.format(lr.score(fr ,mw)))
+    coef, inter = lr.coef_.flatten()[0], lr.intercept_.flatten()[0]
+    # Kda
+    def calcfr(x): return ((10**(-abs(coef)*x + inter))/1000)
+    cal_d = pd.DataFrame({'FR': xnew, 'MW': [calcfr(x) for x in xnew]})
+    cal_d.to_csv('cal.txt', sep='\t', index=False)
+    return dict(zip(cal_d['FR'], cal_d['MW']))
 
 
 def runner(tmp_, ids, cal, mw, fdr, mode):
@@ -469,7 +458,7 @@ def runner(tmp_, ids, cal, mw, fdr, mode):
     try:
         if os.path.isfile(cal):
             cal = calc_calibration(cal)
-    except TypeError:
+    except TypeError as e:
         pass
     allexps = MultiExperiment()
     for smpl in dir_:

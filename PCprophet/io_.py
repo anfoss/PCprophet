@@ -266,22 +266,9 @@ def read_txt(path, first_col="GN"):
             for key in header:
                 try:
                     HoA[temp.get("GN")].append(float(temp[key]))
-                except ValueError:
+                except ValueError as v:
                     continue
     return HoA
-
-
-def read_cal(infile):
-    """
-    read calibration file
-    """
-    out = []
-    out2 = []
-    for line in open(infile, "r"):
-        tmp_ = re.split(r"\t+", line.rstrip("\n"))
-        out.append(int(tmp_[0]))
-        out2.append(float(tmp_[1]))
-    return out, out2
 
 
 def ppi2graph(infile):
