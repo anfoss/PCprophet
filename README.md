@@ -25,7 +25,7 @@ Ensure that you have installed the GitHub tool and 'git-lfs' command specificall
 ```
 git-lfs clone https://github.com/anfoss/PCprophet PCprophet
 ```
-This will get you a working copy of PCprophet into a folder called PCprophet.
+This will get you a working copy of PCprophet into a folder called PCprophet. Please go to the 'PCprophet' folder to unzip 'tmp_GO_sp_only.txt.zip'. You then should be able to see the tmp_GO_sp_only.txt file in the same folder. Note that the 'tmp_GO_sp_only.txt' file must be under the 'PCprophet' folder.
 
 ## Usage
 
