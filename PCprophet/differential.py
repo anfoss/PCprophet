@@ -9,10 +9,11 @@ import numpy as np
 import scipy.special as spc
 import collections as cl
 import scipy.stats as sta
-
+from itertools import combinations
+import pickle 
+from datetime import datetime
 
 import PCprophet.io_ as io
-import PCprophet.stats_ as st
 import PCprophet.parse_go as go_parser
 
 
@@ -44,7 +45,7 @@ class BayesMANOVA:
             ok = ok and np.sum(y == cl) >= 1
         return ok
 
-    def __init__(self, modeltype="naive", g=0.8, h=1.5, gam=0.025):
+    def __init__(self, modeltype="full", g=0.8, h=1.5, gam=0.025):
         """
         modeltype: type of combination can be 'naive' for a
                 conditional independence type combination of
@@ -352,13 +353,13 @@ def prepcplxdata(
         objects which describe the data for that protein.
     """
     ## remove single elements from complexes
-    dfrm.dropna(subset=[cplxcol], inplace=True)
+    dfrm = dfrm.dropna(subset=[cplxcol])
     allpids = dfrm[pidcol].tolist()
     pids = list(set(allpids))
     allcpx = dfrm[cplxcol].tolist()
     cpx = list(set(allcpx))
     cplx2pids = dict()
-    # prepare genrating a dict which maps complex ids to protein ids.
+    # prepare generating a dict which maps complex ids to protein ids.
     allpids = np.array(allpids)
     allcpx = np.array(allcpx)
     # BUG here nans?
@@ -400,7 +401,7 @@ def score_complexes(
     runs differential bayes manova
     """
     (cplx2pids, pids, Xdfrm, pids2dat) = prepcplxdata(
-        dfrm, pidcol="ID", cplxcol="CMPLX", trgcol="COND", valcols=valcols
+        dfrm, pidcol="member", cplxcol="complex_id", trgcol="condition", valcols=valcols
     )
     if mode == "protein":
         bmn = BayesMANOVA()
@@ -434,16 +435,18 @@ def score_complexes(
         return bpdr_cplx_fl
 
 
-def extract_local_peak(row, q, mode, norm=True):
+def extract_local_peak(row, q, norm=True):
     """
-    extract local peak from SEL column and returns peaks around +-q fractions
+    extract local peak from selected_peak column and returns peaks around +-q fractions
     if not possible extract 10
     """
     # move from fraction to index
-    pk = int(row["SEL"] - 1)
-    cols = {"abu": "RAWINT", "asm": "INT"}
-    tmp = row[cols[mode]].split("#")
-    tmp = np.array(list(map(float, tmp))).flatten()
+    pk = int(row["selected_peak"])
+    tmp = row['rescaled_int'].split("#")
+    try :
+        tmp = np.array(list(map(float, tmp))).flatten()
+    except Exception as e:
+        print(e, row)
     if norm:
         tmp = sta.zscore(tmp, ddof=1)
     tmp = list(tmp)
@@ -451,20 +454,20 @@ def extract_local_peak(row, q, mode, norm=True):
         return tmp
     elif pk < q:
         return tmp[: (q * 2)]
-    elif row["SEL"] > (72 - q):
+    elif row["selected_peak"] > (72 - q):
         return tmp[-(q * 2) :]
     else:
         return tmp[(pk - q) : (pk + q)]
 
 
-def extract_inte(df, mode, q=72, norm=False, split_cmplx=False):
+def extract_inte(df, q=72, norm=False, split_cmplx=False):
     """
     modify combined to extract intensity and returns a df
     """
     if split_cmplx:
-        df["CMPLX"] = df["CMPLX"].str.split("#")
-        df = io.explode(df=df, lst_cols=["CMPLX"])
-    df["pksINT"] = df.apply(lambda x: extract_local_peak(x, q, mode, norm), axis=1)
+        df["complex_id"] = df["complex_id"].str.split("#")
+        df = df.explode("complex_id")
+    df["pksINT"] = df.apply(lambda x: extract_local_peak(x, q, norm), axis=1)
     vals = list(map("{0}".format, list(range(1, (2 * q) + 1))))
     if q > 72 / 2:
         vals = list(map("{0}".format, list(range(1, q + 1))))
@@ -477,193 +480,86 @@ def extract_inte(df, mode, q=72, norm=False, split_cmplx=False):
     return df, vals
 
 
-def differential_(fl, mode, ids):
+def differential_(fl, ids):
     """
     performs differential analysis using first raw profiles (i.e abu)
     and then by using the normalized (asm state)
+    this needs to be changed for raw use sum and log2FC while for asm use PS module
     """
     df = pd.read_csv(fl, sep="\t")
-    if mode == "abu":
-        combined, vals = extract_inte(df, mode, norm=False)
-    elif mode == "asm":
-        combined, vals = extract_inte(df, mode, norm=False)
+    combined, vals = extract_inte(df, norm=False)
     dif_prot, dif_cmplx = [], []
     for cnd in ids.keys():
         if cnd != "Ctrl":
-            tmp = combined[combined["COND"].isin(["Ctrl", cnd])]
+            tmp = combined[combined["condition"].isin(["Ctrl", cnd])]
             prot = score_complexes(tmp, valcols=vals, mode="protein")
-            tmp = combined[combined["COND"].isin(["Ctrl", cnd])]
+            tmp = combined[combined["condition"].isin(["Ctrl", cnd])]
             cmplx = score_complexes(tmp, valcols=vals, mode="cmplx")
             # use the short_name in sample_ids.txt
-            prot["Sample_ID"] = ids[cnd]
-            cmplx["Sample_ID"] = ids[cnd]
+            prot["sample_id"] = ids[cnd]
+            cmplx["sample_id"] = ids[cnd]
             dif_prot.append(prot)
             dif_cmplx.append(cmplx)
     dif_prot = pd.concat(dif_prot)
     dif_cmplx = pd.concat(dif_cmplx)
-    dif_cmplx.add_prefix(mode)
-    dif_prot.add_prefix(mode)
+    
+    ## now rename and clean output
     return dif_cmplx, dif_prot
 
 
-def average_stoichiometry(stoi_dict):
-    """
-    receive a stoichiometry dict with
-    dict[protein] => [stoic, stoic stoich]
-    and return the average
-    prot:prot:prot = stoic:stoic:stoic
-    """
-    toret = {}
-    for prot in stoi_dict.keys():
-        toret[prot] = str(st.mean(stoi_dict[prot]))
-    p, s = zip(*toret.items())
-    k = [list(x) for x in zip(*sorted(zip(p, s), key=lambda pair: pair[0]))]
-    return "\t".join([":".join(k[0]), ":".join(k[1])])
-
-
-def stoichiometry(cmplx, sel):
-    """
-    receive a protein complex and list of peaks and calculate stoichiometry
-    i.e ratio of peak and then rank it lowest to highest
-    receive single HoA and sel peaks per protein for condition
-    calculate max of sel peaks
-    """
-    # get values for each peak
-    mx = {k: cmplx[k][v] for k, v in sel.items()}
-    # now which protein has the max value in the sel peak
-    protmax = max(mx, key=mx.get)
-    try:
-        ratios = {k: cmplx[k][sel[protmax]] / mx[protmax] for k in sel}
-        ratios = {k: ratios[k] for k in ratios if ratios[k] != 0}
-        prot, ratio = zip(*ratios.items())
-        ratio2 = [round(x / min(ratio), 2) for x in ratio]
-        return dict(zip(prot, ratio2))
-    except Exception:
-        return dict(zip(sel.keys(), [1] * len(sel.keys())))
-
-
-def reformat_cmplx_hoh(cmplx):
-    """
-    get a complex has HoH and split it
-    """
-    stoi = []
-    for cond in cmplx:
-        tmp_stoi = io.makehashlist()
-        tmp_prot_nr = []
-        for repl in cmplx[cond]:
-            pks = {k: cmplx[cond][repl][k]["I"] for k in cmplx[cond][repl]}
-            pks2 = io.makehashlist()
-            for k in pks:
-                pks2[k].extend([float(x) for x in pks[k].split("#")])
-            sel = {k: cmplx[cond][repl][k]["C"] for k in cmplx[cond][repl]}
-            sel = {k: int(float(v)) for k, v in sel.items()}
-            tmp_prot_nr.append(len(sel.keys()))
-            dummy = stoichiometry(pks2, sel)
-            for pr in dummy.keys():
-                tmp_stoi[pr].extend([dummy[pr]])
-        mb = round(st.mean(tmp_prot_nr))
-        row = "\t".join([cond, average_stoichiometry(tmp_stoi), str(mb)])
-        stoi.append(row)
-    return stoi
-
-
-def calc_stoic(path, tmp_fold):
-    """
-    read data in and prepare cmplx array
-    """
-    header = []
-    cmplx_stoi = io.makedeephash()
-    temp = {}
-    for line in open(path, "r"):
-        line = line.rstrip("\n")
-        if line.startswith(str("ID") + "\t"):
-            header = re.split(r"\t+", line)
-        else:
-            things = re.split(r"\t+", line)
-            temp = dict(zip(header, things))
-        if temp and float(temp["P"]) > 0:
-            pr_acc = temp["ID"]
-            cond = temp["COND"]
-            repl = temp["REPL"]
-            cmplx_stoi[temp["CMPLX"]][cond][repl][pr_acc]["I"] = temp["INT"]
-            cmplx_stoi[temp["CMPLX"]][cond][repl][pr_acc]["C"] = temp["SEL"]
-        else:
-            continue
-    tmp = []
-    for mp in cmplx_stoi:
-        tmp.extend([mp + "\t" + x for x in reformat_cmplx_hoh(cmplx_stoi[mp])])
-    header = ["CMPLX", "COND", "MB", "RATIO", "NR"]
-    stoi_path = os.path.join(tmp_fold, "stoichiometry.txt")
-    io.create_file(stoi_path, header)
-    [io.dump_file(stoi_path, x) for x in tmp]
-
-
-def create_complex_report(infile, sto, sid, outfile="ComplexReport.txt"):
+def create_complex_report(comb_df, stoic_df, sid_df, outfile):
     def rescale_fr(x, fr):
         try:
-            return str(round(x["SEL"] * fr[x["COND"]] / 72))
+            return str(round(x["selected_peak"] * fr[x["condition"]] / 72))
         except ValueError:
             return -1
 
-    print("Creating complex level report\n")
-    sto = pd.read_csv(sto, sep="\t")
-    info = pd.read_csv(sid, sep="\t")
-    combined = pd.read_csv(infile, sep="\t")
     # drop single protein now
-    combined = combined[combined["P"] != -1]
+    comb_df = comb_df[comb_df["rf_probability"] != -1]
     cal = None
     try:
         cal = pd.read_csv("./cal.txt", sep="\t")
         cal = dict(zip([str(round(x)) for x in list(cal["FR"])], cal["MW"]))
     except Exception:
         print("Calibration not provided\nThe MW will not be estimated")
-    combined.drop(["PKS", "INT", "ID"], inplace=True, axis=1)
-    com = combined.groupby(["CMPLX", "COND", "REPL"], as_index=False).mean()
-    mrg = pd.merge(sto, com, on=["CMPLX", "COND"])
-    mrg["is complex"] = np.where(mrg["P"] >= 0.5, "Positive", "Negative")
+    comb_df = comb_df.drop(["peaks", "rescaled_int", "raw_int", "member"], axis=1)
+    # comb_df has exploded all proteins so rows are duplicated extensively.
+    # while most things are the same (GO scores, etc) the problem is that the
+    # rf confidence and peak selected is different across various replicates.
+    # In this way we keep it separated
+    # TBD if keeping replicates info or not
+    com = comb_df.groupby(["complex_id", "condition", "replicate"], as_index=False).head(1)
+    mrg = pd.merge(stoic_df, com, on=["complex_id", "condition"])
+    mrg["is_complex"] = np.where(mrg["rf_probability"] >= 0.5, "positive", "negative")
+
 
     # convert the fraction sel to the new one
-    fr = dict(zip(info["cond"], info["fr"]))
-    mrg["SEL"] = mrg.apply(lambda row: rescale_fr(row, fr), axis=1)
+    fr = dict(zip(sid_df["cond"], sid_df["fr"]))
+    mrg["selected_peak"] = mrg.apply(lambda row: rescale_fr(row, fr), axis=1)
     search = []
-    for v in mrg["CMPLX"]:
+    for v in mrg["complex_id"]:
         if re.findall(r"^cmplx_+|#cmplx_+", v):
-            search.append("Novel")
+            search.append("novel")
         else:
-            search.append("Reported")
-    mrg["is in db"] = search
-    # and convert the names with infos
-    ids = dict(zip(info["cond"], info["short_id"]))
+            search.append("reported")
+    mrg["in_database"] = search
+    ids = dict(zip(sid_df["cond"], sid_df["short_id"]))
+    
     if cal:
-        mrg["MW"] = mrg["SEL"]
-        mrg.replace({"MW": cal}, inplace=True)
+        mrg["molecular_weight"] = mrg["selected_peak"]
+        mrg.replace({"molecular_weight": cal}, inplace=True)
     else:
-        mrg["MW"] = "0"
-    mrg["Sample_ID"] = mrg["COND"].map(ids)
-    header = [
-        "ComplexID",
-        "Condition",
-        "Members",
-        "Stoichiometry",
-        "# Members",
-        "Replicate",
-        "Apex Peak",
-        "Prediction confidence",
-        "Completness",
-        "GO Score",
-        "Is Complex",
-        "Reported",
-        "Estimated MW",
-        "Sample_ID",
-    ]
-    # now rename all the columns
-    mrg = mrg.rename(dict(zip(list(mrg), header)), axis=1)
-    mrg[["Completness"]] = mrg[["Completness"]].fillna(value=0)
-
+        mrg["molecular_weight"] = "0"
+    
+    mrg.rename(columns={"member": "members", 'ratio':'stoichiometry'}, inplace=True)
+    mrg["sample_id"] = mrg["condition"].map(ids)
+    mrg[["completeness"]] = mrg[["completeness"]].fillna(value=0)
     # add GO terms
-    go = pd.read_csv(io.resource_path("go_terms_class.txt"), sep="\t")
+    go = pd.read_csv(io.resource_path("meta/go_terms_class.txt"), sep="\t")
     id2name = dict(zip(go["id"], go["names"]))
-    gaf = go_parser.read_gaf_out(io.resource_path("tmp_GO_sp_only.txt"))
+    with open(io.resource_path('meta/go_gaf.pkl'), "rb") as f:
+        gaf = pickle.load(f)
+
 
     def go_name(gn, gaf, id2name):
         """
@@ -674,15 +570,16 @@ def create_complex_report(infile, sto, sid, outfile="ComplexReport.txt"):
         for g in gn.split(":"):
             for onto in gaf[g]:
                 if onto in ["CC", "MF", "BP"]:
-                    {nm[onto].add(x) for x in gaf[g][onto].split(";")}
+                    {nm[onto].add(x) for x in gaf[g][onto]}
         cc = ";".join([id2name.get(x, x) for x in nm["CC"] if "GO" in x])
         mf = ";".join([id2name.get(x, x) for x in nm["MF"] if "GO" in x])
         bp = ";".join([id2name.get(x, x) for x in nm["BP"] if "GO" in x])
         xx = lambda x: x if x else ""
         return xx(cc), xx(mf), xx(bp)
 
+
     cc, mf, bp = [], [], []
-    for gn in list(mrg["Members"]):
+    for gn in list(mrg["members"]):
         try:
             c, m, b = go_name(gn, gaf, id2name)
             cc.append(c)
@@ -692,107 +589,213 @@ def create_complex_report(infile, sto, sid, outfile="ComplexReport.txt"):
             cc.append("")
             mf.append("")
             bp.append("")
-    mrg["Common GO Cellular Component"] = cc
-    mrg["Common GO Biological Process"] = bp
-    mrg["Common GO Molecular Function"] = mf
-    mrg.to_csv(outfile, sep="\t", index=False)
+    mrg["shared_go_cellular_component"] = cc
+    mrg["shared_go_biological_process"] = bp
+    mrg["shared_go_molecular_function"] = mf
+    mrg.to_csv(outfile, index=False)
+    return mrg
 
 
-def create_ppi_report(infile="ComplexReport.txt", outfile="PPIReport.txt"):
+def create_ppi_report(cmplx_report_out, ppi_report_out):
     """
     create ppi report
     """
-    header = []
-    outf = []
-    temp = {}
-    w = ["Condition", "Replicate", "Reported"]
-    print("Generating network from complexes")
-    for line in open(infile, "r"):
-        line = line.rstrip("\n")
-        if line.startswith(str("ComplexID") + "\t"):
-            header = re.split(r"\t+", line)
-        else:
-            things = re.split(r"\t+", line)
-            temp = dict(zip(header, things))
-        if temp and temp["Is Complex"] == "Positive":
-            mb = temp["Members"].split(":")
-            sto = temp["Stoichiometry"].split(":")
-            d = dict(zip(mb, sto))
-            for k in itertools.combinations(mb, 2):
-                tmp = [temp["ComplexID"], k[0], k[1], d[k[0]], d[k[1]]]
-                tmp.extend([temp[x] for x in w])
-                outf.append("\t".join(tmp))
-    header = [
-        "ComplexID",
-        "ProteinA",
-        "ProteinB",
-        "StoichiometryA",
-        "StoichiometryB",
-        "Condition",
-        "Replicate",
-        "Reported",
-    ]
-    io.wrout(outf, outfile, header)
+    df = pd.read_csv(cmplx_report_out)
+    df = df[df['is_complex'] == 'positive']
+    #df = df.drop(['rf_probability',"shared_go_cellular_component", "shared_go_biological_process", "shared_go_molecular_function", "selected_peak" , 'completeness', 'go_score', 'molecular_weight', 'stoichiometry', 'in database'], axis=1)
+    df = df[['complex_id', 'condition', 'replicate', 'members']]
+    df['members'] = df['members'].str.split(':')
+    df = df.explode(['members'], ignore_index=True)
+    ppi_df = []
+
+    for group_keys, group_df in df.groupby(['complex_id', 'condition', 'replicate']):
+        members = list(group_df['members'])        
+        for pairs in combinations(members, 2):
+            ppi_df.append({
+                'complex_id': group_keys[0],
+                'condition': group_keys[1],
+                'replicate': group_keys[2],
+                'proteinA': pairs[0],
+                'proteinB': pairs[1],
+            })
+
+    ppi_df = pd.DataFrame(ppi_df)
+    # deduplicate and aggregate PPIs into complex groups
+    ppi_df = ppi_df.groupby(['condition','replicate', 'proteinA', 'proteinB']).agg({
+        'complex_id': lambda x: ';'.join(x),
+    }).reset_index()
+    ppi_df.to_csv(ppi_report_out, index=False)
 
 
 def assembled(df, thr=0.3):
     """
-    test for number of positive to assign global assembly state for exp
+    test for number of positive complex assignments to assign global assembly state for exp
     """
-    y = df[df["Is Complex"] == "Positive"].shape[0]
+    y = df[df["is_complex"] == "Positive"].shape[0]
     if y / df.shape[0] >= thr:
         return "Positive"
     else:
         return "Negative"
 
 
-def runner(infile, sample, outf, temp):
-    """ """
+def stoichiometry(df, q=3):
+    """
+    Calculate stoichiometry of proteins in a complex using AUC-based intensity 
+    around selected peak indices.
+
+    For each protein, the intensity profile ("rescaled_int" column) is parsed into an array.
+    The selected peak position ("selected_peak" column) is used to extract a window of values
+    ± `q` points around the peak. The area under the curve (AUC) in that window 
+    is computed by summing the intensities. Stoichiometry is computed as the ratio 
+    of each protein's AUC to the maximum AUC in the same condition and replicate group.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Input dataframe with the following columns:
+        - 'rescaled_int': string of intensity values separated by '#', length =72.
+        - 'selected_peak': selected peak index (1-based or 0-based; assumed 0-based here).
+        - 'complex_id': complex identifier.
+        - 'condition': experimental condition.
+        - 'replicate': replicate ID.
+        - 'member'  : protein accession or name.
+    
+    q : int, default=3
+        Number of intensity points to include on each side of the selected peak index
+        when computing the AUC. Total window size is `2 * flank + 1`.
+
+    Returns
+    -------
+    df : pandas.DataFrame
+        Original dataframe with two new columns:
+        - 'PEAK_AUC': summed intensity around the selected peak ± `q`.
+        - 'RATIO': stoichiometric ratio normalized to max AUC within (complex_id, condition, replicate).
+    
+    df_avg : pandas.DataFrame
+        Aggregated dataframe with average stoichiometric ratio for each protein across 
+        replicates. Columns: ['complex_id', 'condition', 'member', 'ratio'].
+
+    Notes
+    -----
+    - Index safety is ensured by clipping the bounds of the intensity array.
+    - AUC is computed as a simple sum, assuming intensities are already normalized (e.g., 0-1).
+
+    """
+    intensity_array = df['rescaled_int'].str.split('#').apply(lambda x: np.array(x, dtype=float))
+    sel_index = df['selected_peak'].astype(float).astype(int)
+    
+    def extract_auc(arr, peak_idx, q=4):
+        left = max(0, peak_idx - q)
+        right = min(len(arr), peak_idx + q + 1)
+        return np.sum(arr[left:right])
+
+    auc_values = [extract_auc(arr, i) for arr, i in zip(intensity_array, sel_index)]
+    df['peak_auc'] = auc_values
+
+    group_cols = ['complex_id', 'condition', 'replicate']
+    df['ratio'] = df.groupby(group_cols)['peak_auc'].transform(lambda x: x / x.max())
+    stoic_avg = df.groupby(['complex_id', 'condition', 'member'])['ratio'].mean().reset_index()
+    stoic_avg['ratio'] = stoic_avg['ratio'].round(1).astype(str)
+    stoic_avg = stoic_avg.groupby(['complex_id','condition']).agg({
+        'ratio': lambda x: ':'.join(x),
+        'member': lambda x: ':'.join(x)
+    }).reset_index()
+    return stoic_avg
+
+
+def runner(infile, sample_ids, outf, temp, dif):
+    """
+    Executes the differential analysis workflow for protein complexes and proteins.
+    This function performs the following steps:
+    1. Creates the output directory if it does not exist.
+    2. Calculates stoichiometry from the input file and sample information.
+    3. Generates complex and protein-protein interaction (PPI) reports.
+    4. If only one sample is present, returns True.
+    5. Performs differential analysis for complexes and proteins.
+    6. Merges and processes results to remove single protein accessions and duplicate entries.
+    7. Checks if complexes are assembled in any condition.
+    8. Renames columns for clarity and saves differential reports for complexes and proteins.
+    Args:
+        infile (str): Path to the input file containing data for analysis.
+        sample (str): Path to the sample file or sample identifier.
+        outf (str): Output directory where results will be saved.
+        temp (str): Temporary directory for intermediate files.
+        dif (str): Boolean to do or skip differential analysis
+    Returns:
+        bool: True if only one sample is present, otherwise None.
+    Raises:
+        AssertionError: Always raised due to the 'assert False' statement (likely for debugging).
+    """
+    print(datetime.now())
+
     if not os.path.isdir(outf):
         os.makedirs(outf)
-    ids = io.read_sample_ids_diff(sample)
-    calc_stoic(path=infile, tmp_fold=temp)
-    sto = os.path.join(temp, "stoichiometry.txt")
-    complex_report_out = os.path.join(outf, "ComplexReport.txt")
-    create_complex_report(infile, sto, sample, outfile=complex_report_out)
-    ppi_report_out = os.path.join(outf, "PPIReport.txt")
-    create_ppi_report(infile=complex_report_out, outfile=ppi_report_out)
-    if len(list(ids.keys())) == 1:
+        
+    # stoichiometry calculation    
+    comb = pd.read_csv(infile, sep="\t")
+    print(comb[comb['complex_id'].str.contains('cmplx')])
+    assert False
+    # remove single protein
+    comb = comb[comb["rf_probability"] != -1]
+    stoic_df = stoichiometry(comb, q=3)
+    stoic_path = os.path.join(temp, "stoichiometry.txt")
+    stoic_df.to_csv(stoic_path, sep="\t", index=False)
+
+    
+    sid_df = pd.read_csv(sample_ids, sep="\t")
+    comb_df = pd.read_csv(infile, sep="\t")
+    cmplx_report_out = os.path.join(outf, "complex_report.csv")
+    ppi_report_out = os.path.join(outf, "ppi_report.csv")
+    print("Creating complex report and PPI report")
+    create_complex_report(comb_df, stoic_df, sid_df, outfile=cmplx_report_out)
+    create_ppi_report(cmplx_report_out, ppi_report_out)
+    
+    ## if there are only controls no differential analysis
+    if sid_df["cond"].nunique() == 1 and sid_df["cond"].values[0] == "Ctrl":
+        print("No differential analysis performed, only control samples found.")
         return True
-    ## change me!
-    dif_cmplx, dif_prot = differential_(infile, "asm", ids)
-    complex_report_out = pd.read_csv(complex_report_out, sep="\t")
-    complex_report_out = complex_report_out[
-        ["Sample_ID", "Replicate", "Is Complex", "ComplexID", "Members"]
-    ]
-    # remove single prot accession i.e single ID
-    dif_cmplx = dif_cmplx[~dif_cmplx["ID"].isin(dif_prot["ID"])]
-    # this will duplicate the entry
-    dif_cmplx = pd.merge(
-        complex_report_out,
-        dif_cmplx,
-        left_on=["ComplexID", "Sample_ID"],
-        right_on=["ID", "Sample_ID"],
-    )
-    # need to check if assembled in any condition
-    ex = dif_cmplx.groupby(["ComplexID"]).apply(assembled).reset_index()
-    ex = dict(zip(list(ex["ComplexID"]), list(ex[0])))
-    dif_cmplx["Is Complex"] = dif_cmplx["ComplexID"].map(ex)
-    dif_cmplx.drop_duplicates(
-        subset=["Sample_ID", "ComplexID"], keep="first", inplace=True
-    )
-    nwnm = {
-        "PB4DEX": "Probability_differential_abundance",
-        "LGMLLHN": "Abundance_log_marginal_likelihood_null",
-        "LGMLLHA": "Abundance_log_marginal_likelihood_alternative",
-    }
-    dif_cmplx.rename(columns=nwnm, inplace=True)
-    dif_cmplx.rename(columns={"ID": "ComplexID"}, inplace=True)
-    dif_cmplx.to_csv(
-        os.path.join(outf, "DifferentialComplexReport.txt"), sep="\t", index=False
-    )
-    dif_prot.rename(columns=nwnm, inplace=True)
-    dif_prot.rename(columns={"ID": "GeneName"}, inplace=True)
-    dif_prot.to_csv(
-        os.path.join(outf, "DifferentialProteinReport.txt"), sep="\t", index=False
-    )
+
+    if dif == 'False':    
+        ids = dict(zip(sid_df["cond"], sid_df["short_id"]))
+        print(datetime.now())
+
+        print("Performing differential analysis for complexes and proteins...")
+
+        dif_cmplx, dif_prot = differential_(infile, ids)
+        cmplx_report_df = pd.read_csv(cmplx_report_out)
+        cmplx_report_df = cmplx_report_df[
+            ["sample_id", "replicate", "is_complex", "complex_id", "members"]
+        ]
+        # remove single prot accession i.e single ID in the differential complex file
+        dif_cmplx = dif_cmplx[~dif_cmplx["ID"].isin(dif_prot["ID"])]
+        # this will duplicate the entry
+        dif_cmplx = pd.merge(
+            cmplx_report_df,
+            dif_cmplx,
+            left_on=["complex_id", "sample_id"],
+            right_on=["ID", "sample_id"],
+        ).drop(columns=["ID", "replicate"])
+        # count the number of positive complex assignments to assign global
+        # assembly state for every condition
+        ex = dif_cmplx.groupby(["complex_id"]).apply(assembled).reset_index()
+        ex = dict(zip(list(ex["complex_id"]), list(ex[0])))
+        dif_cmplx["is_complex"] = dif_cmplx["complex_id"].map(ex)
+        dif_cmplx.drop_duplicates(
+            subset=["sample_id", "complex_id"], keep="first", inplace=True
+        )
+        nwnm = {
+            "PB4DEX": "probability_differential_assembly_state",
+            "LGMLLHN": "assembly_state_log_marginal_likelihood_null",
+            "LGMLLHA": "assembly_state_log_marginal_likelihood_alternative",
+        }
+        dif_cmplx.rename(columns=nwnm, inplace=True)
+        dif_cmplx.to_csv(
+            os.path.join(outf, "differential_complex_report.csv"), index=False
+        )
+        dif_prot.rename(columns=nwnm, inplace=True)
+        dif_prot.rename(columns={"ID": "gene_name"}, inplace=True)
+        dif_prot.to_csv(
+            os.path.join(outf, "differential_protein_report.csv"), index=False
+        )
+        print(datetime.now())
+    return True

@@ -57,14 +57,14 @@ class InputTester(object):
             self.test_empty(col)
         elif self.filetype == "db":
             try:
-                col = ["ComplexID", "ComplexName", "subunits(Gene name)"]
-                unique = ["ComplexName", "ComplexID"]
+                col = ["complex_id", "complex_name", "subunits_gene_name"]
+                unique = ["complex_id", "complex_name"]
                 self.test_all(col, unique)
                 [self.test_empty(x for x in col)]
             except PCpexc.MissingColumnError as e:
                 self.test_missing_col(["protA", "protB"])
         elif self.filetype == "in":
-            col = ["GN", "ID"]
-            unique = ["GN"]
+            col = ["gene_name", "protein_id"]
+            unique = ["gene_name"]
             self.test_all(col, unique)
             self.test_na()

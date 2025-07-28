@@ -39,7 +39,7 @@ Please read [CONTRIBUTING.md](https://github.com/anfoss/PCprophet/blob/master/CO
 
 ## Authors
 
-* **Andrea Fossati** - *Initial work* - [anfoss](https://github.com/anfoss) andrea.fossati@ucsf.edu
+* **Andrea Fossati** - *Initial work* - [anfoss](https://github.com/anfoss)
 * **Chen Li** - *Initial work* - chen.li@monash.edu
 
 

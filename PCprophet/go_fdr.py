@@ -4,9 +4,9 @@ import pandas as pd
 import networkx as nx
 import random as random
 from sklearn.mixture import GaussianMixture
+import itertools
 
 import PCprophet.io_ as io
-import PCprophet.stats_ as st
 
 
 def db2ppi(list_sep):
@@ -15,7 +15,7 @@ def db2ppi(list_sep):
     """
     ppi_db = nx.Graph()
     for members in list_sep:
-        for pairs in st.fast_comb(members.split("#"), 2):
+        for pairs in itertools.combinations(members.split("#"), 2):
             ppi_db.add_edge(str.upper(pairs[0]), str.upper(pairs[1]))
     ppi_db.remove_edges_from(nx.selfloop_edges(ppi_db, keys=True))
     return ppi_db
@@ -35,7 +35,7 @@ def overlap_net(ppi_network, mb, over=0.5):
     mb = re.split(r"#", mb)
     if len(mb) < 2:
         return True
-    for pairs in st.fast_comb(mb, 2):
+    for pairs in itertools.combinations(mb, 2):
         if ppi_network.has_edge(pairs[0], pairs[1]):
             match += 1
         else:
@@ -45,13 +45,13 @@ def overlap_net(ppi_network, mb, over=0.5):
     else:
         return False
 
-
+# TODO change to probability based fdr
 def calc_fdr(combined, db, go_thresh):
     """
     calculate confusion matrix from test and db
     db is a networkX object
     """
-    test = dict(zip(list(combined["TOTS"]), list(combined["MB"])))
+    test = dict(zip(list(combined["TOTS"]), list(combined["members"])))
     isindb = {k: overlap_net(db, v) for k, v in test.items()}
     est_fdr = []
     conf_m = []
@@ -131,15 +131,17 @@ def estimate_cutoff(fdr_arr, thresh, target_fdr=0.5):
     fdr2thresh = dict(zip(fdr_arr, thresh))
     fdr_min = min([abs(x - target_fdr) for x in fdr_arr])
     idx = [abs(x - target_fdr) for x in fdr_arr].index(fdr_min)
-    return fdr2thresh[fdr_arr[idx]]
+    return fdr2thresh[fdr_arr[idx]], fdr_arr[idx]
 
 
 def filter_hypo(combined, go_cutoff):
     """
     return object for collapse py
     """
-    mask = (combined["ANN"] != 1) & (combined["TOTS"] < go_cutoff)
+    print(f"Number of positive complex hypotheses before filtering: {combined[combined['reported']!=1].shape[0]}")
+    mask = (combined["reported"] != 1) & (combined["TOTS"] < go_cutoff)
     filt = combined.drop(combined[mask].index)
+    print(f"Number of positive complex hypotheses after filtering: {filt[filt['reported']!=1].shape[0]}")
     return filt
 
 
@@ -149,12 +151,12 @@ def eval_complexes(cmplx):
     use either all positive if more than 50 else use all db
     return None otherwise
     """
-    if cmplx[(cmplx["IS_CMPLX"] == "Yes") & (cmplx["ANN"] == 1)].shape[0] > 50:
+    if cmplx[(cmplx["is_complex"] == "Yes") & (cmplx["reported"] == 1)].shape[0] > 50:
         # return only positive database
-        return cmplx[(cmplx["IS_CMPLX"] == "Yes") & (cmplx["ANN"] == 1)]
+        return cmplx[(cmplx["is_complex"] == "Yes") & (cmplx["reported"] == 1)]
         #  use all complexes
-    elif cmplx[cmplx["ANN"] == 1].shape[0] > 0:
-        return cmplx[cmplx["ANN"] == 1]
+    elif cmplx[cmplx["reported"] == 1].shape[0] > 0:
+        return cmplx[cmplx["reported"] == 1]
     else:
         # empty so can quack
         return pd.DataFrame()
@@ -164,10 +166,10 @@ def fdr_from_GO(cmplx_comb, target_fdr, fdrfile):
     """
     use positive predicted annotated from db to estimate hypothesis fdr
     """
-    pos = cmplx_comb[cmplx_comb["IS_CMPLX"] == "Yes"]
+    pos = cmplx_comb[cmplx_comb["is_complex"] == "Yes"]
     # remove already here the hypothesis with 0 go
-    hypo = pos[(pos["ANN"] != 1) & (pos["TOTS"] > 0)]
-    db = cmplx_comb[cmplx_comb["ANN"] == 1]
+    hypo = pos[(pos["reported"] != 1) & (pos["TOTS"] > 0)]
+    db = cmplx_comb[cmplx_comb["reported"] == 1]
     db_use = eval_complexes(cmplx_comb)
     io.create_file(fdrfile, ["fdr", "sumGO"])
     if target_fdr > 0:
@@ -192,15 +194,15 @@ def fdr_from_GO(cmplx_comb, target_fdr, fdrfile):
                 )
                 return filter_hypo(cmplx_comb, 0), zip([0], [0], [0])
         else:
-            ppi_db = db2ppi(db_use["MB"])
+            ppi_db = db2ppi(db_use["members"])
             thresh_fdr, conf_m = calc_fdr(hypo, ppi_db, thresh)
-            go_cutoff = estimate_cutoff(thresh_fdr, thresh, target_fdr)
+            go_cutoff, fdr_reach = estimate_cutoff(thresh_fdr, thresh, target_fdr)
             io.create_file(fdrfile + ".conf_m", ["tp" "fp" "tn" "fn"])
             for pairs in zip(conf_m, thresh):
                 io.dump_file(fdrfile + ".conf_m", "\t".join(map(str, pairs)))
         for pairs in zip(thresh_fdr, thresh):
             io.dump_file(fdrfile, "\t".join(map(str, pairs)))
-        print("Estimated GO cutoff is {}".format(go_cutoff))
+        print("Estimated GO cutoff to reach {} FDR is {}".format(target_fdr, go_cutoff))
         return filter_hypo(cmplx_comb, go_cutoff), zip(thresh_fdr, thresh, nm)
     else:
         print("No FDR control performed")

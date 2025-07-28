@@ -6,18 +6,15 @@ import sys
 import os
 import platform
 import numpy as np
-
+from datetime import datetime
+import pandas as pd
 
 # modules
 from PCprophet import io_ as io
 from PCprophet import collapse as collapse
-from PCprophet import generate_features_v2 as generate_features
-from PCprophet import hypothesis as hypothesis
-from PCprophet import map_to_database as map_to_database
-from PCprophet import merge as merge
+from PCprophet import features_and_prediction as features_and_prediction
 from PCprophet import differential as differential
-from PCprophet import predict as predict
-from PCprophet import plots as plots
+from PCprophet import generate_complexes as generate_complexes
 
 from PCprophet import validate_input as validate
 
@@ -27,6 +24,25 @@ class ParserHelper(argparse.ArgumentParser):
         sys.stderr.write('error: %s\n' % message)
         self.print_help()
         sys.exit(2)
+
+
+class Tee:
+    def __init__(self, stream, logfile=None):
+        self.stream = stream
+        self.logfile = logfile
+
+    def write(self, message):
+        self.stream.write(message)
+        self.stream.flush()
+        if self.logfile:
+            self.logfile.write(message)
+            self.logfile.flush()
+
+
+    def flush(self):
+        self.stream.flush()
+        if self.logfile:
+            self.logfile.flush()
 
 
 # TODO check os
@@ -44,7 +60,7 @@ def create_config():
         help='protein complex database from CORUM or ppi network in STRING format',
         dest='database',
         action='store',
-        default='coreComplexes.txt',
+        default='meta/corum_allComplexes.txt',
     )
     # maybe better to add function for generating a dummy sample id?
     parser.add_argument(
@@ -104,7 +120,7 @@ def create_config():
         help='false discovery rate for novel complexes',
         dest='fdr',
         action='store',
-        default=0.5,
+        default=0.2,
         type=float,
     )
     parser.add_argument(
@@ -116,22 +132,12 @@ def create_config():
         action='store',
     )
     parser.add_argument(
-        '-sc',
-        help='score for missing proteins in differential analysis',
-        dest='score_missing',
+        '-dif',
+        help='skip differential analysis',
+        dest='dif',
         action='store',
-        default=0.5,
-        type=float,
+        default=False,
     )
-    parser.add_argument(
-        '-mult',
-        help='Multi processing feature generation',
-        dest='multi',
-        action='store',
-        default='True',
-        choices=['True', 'False'],
-    )
-    parser.add_argument('-w', dest='weight_pred', help='LEGACY', action='store', default=1, type=float)
     parser.add_argument('-v', dest='verbose', help='Verbose', action='store', default=1)
     parser.add_argument('-skip',
                         dest='skip',
@@ -151,14 +157,14 @@ def create_config():
     config['GLOBAL'] = {
         'db': args.database,
         'sid': args.sample_ids,
-        'go_obo': io.resource_path('go-basic.obo'),
-        'sp_go': io.resource_path('tmp_GO_sp_only.txt'),
+        'go_obo': io.resource_path("meta/go_graph.graphml"),
+        'sp_go': io.resource_path("meta/go_gaf.pkl"),
         'output': args.out_folder,
         'cal': args.calibration,
         'mw': args.mwuni,
         'temp': r'./tmp',
-        'mult': args.multi,
-        'skip': args.skip
+        'skip': args.skip,
+        'diff': args.dif
     }
     config['PREPROCESS'] = {
         'is_ppi': args.is_ppi,
@@ -166,18 +172,6 @@ def create_config():
         'merge': args.merge,
     }
     config['POSTPROCESS'] = {'fdr': args.fdr, 'collapse_mode': args.collapse}
-    config['DIFFERENTIAL'] = {
-        'score_missing': args.score_missing,
-        'weight_pred': args.weight_pred,
-        'fold_change': '-5,-2,2,5',
-        'correlation': '0.3,0.9',
-        'ratio': '-2,-0.5,0.5,2',
-        'shift': '-10,-5,5,10',
-        'weight_fold_change': 1,
-        'weight_correlation': 0.75,
-        'weight_ratio': 0.25,
-        'weight_shift': 0.5,
-    }
     # create config ini file for backup
     with open('ProphetConfig.conf', 'w') as conf:
         config.write(conf)
@@ -186,36 +180,36 @@ def create_config():
 
 def preprocessing(infile, config):
     #validate.InputTester(infile, 'in').test_file()
-    map_to_database.runner(
+    generate_complexes.runner(
         infile=infile,
         db=config['GLOBAL']['db'],
         is_ppi=config['PREPROCESS']['is_ppi'],
-        use_fr=config['PREPROCESS']['all_fract'],
-    )
-    hypothesis.runner(
-        infile=infile,
         hypothesis=config['PREPROCESS']['merge'],
-        use_fr=config['PREPROCESS']['all_fract'],
     )
     #  # sample specific folder
     tmp_folder = io.file2folder(infile, prefix=config['GLOBAL']['temp'])
-    merge.runner(base=tmp_folder, mergemode=config['PREPROCESS']['merge'])
-    generate_features.runner(
-        tmp_folder,
-        config['GLOBAL']['go_obo'],
-        config['GLOBAL']['sp_go'],
-        config['GLOBAL']['mult']
+    features_and_prediction.runner(
+        base=tmp_folder,
+        go_obo=config['GLOBAL']['go_obo'],
+        tsp_go=config['GLOBAL']['sp_go'],
     )
-    predict.runner(tmp_folder)
     return True
 
 
 def main():
     config = create_config()
+    
+    
+    ## add logging
+    log_out = f"log_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.log"
+    log_file = open(log_out, "w")
+    sys.stdout = Tee(sys.__stdout__, log_file)
+    sys.stderr = Tee(sys.__stderr__, log_file)
+
     validate.InputTester(config['GLOBAL']['db'], 'db').test_file()
     validate.InputTester(config['GLOBAL']['sid'], 'ids').test_file()
-    files = io.read_sample_ids(config['GLOBAL']['sid'])
-    files = [os.path.abspath(x) for x in files.keys()]
+    files = pd.read_csv(config['GLOBAL']['sid'], sep='\t')
+    files = [os.path.abspath(x) for x in files['Sample']]
     # skip feature generation
     if config['GLOBAL']['skip'] == 'False':
         [preprocessing(infile, config) for infile in files]
@@ -233,12 +227,7 @@ def main():
         config['GLOBAL']['sid'],
         config['GLOBAL']['output'],
         config['GLOBAL']['temp'],
-    )
-    plots.runner(
-        config['GLOBAL']['temp'],
-        config['GLOBAL']['output'],
-        config['POSTPROCESS']['fdr'],
-        config['GLOBAL']['sid'],
+        config['GLOBAL']['diff'],
     )
 
 

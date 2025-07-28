@@ -144,7 +144,7 @@ tmp/
 Hela/*
 
 
-# ignore local files not in test/
+# ignore local files
 sample_ids.txt
 ProphetConfig.conf
 hsa_MW.txt
@@ -162,3 +162,10 @@ PCprophet/tmp_GO_sp_only.txt
 ppi_db.txt
 ppi_PA_acc.txt
 sample_ids*
+corum*.txt
+*.obo
+training_data
+*.tsv
+gaf
+*.ipynb
+test/
