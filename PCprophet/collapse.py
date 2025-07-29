@@ -189,7 +189,6 @@ class ProphetExperiment(object):
             for j in range(i + 1, len(m)):
                 if min_over(m[i], m[j]) >= ov:
                     G.add_edge(names[i], names[j])
-
         return G
 
 
@@ -349,10 +348,12 @@ class ProphetExperiment(object):
         prote = self.prot_matrix.drop(['protein_id'], axis=1).apply(joinall, axis=1)
         df["rescaled_int"] = prote
         df["cond_rep"] = self.condition
+        df["is_subcomplex_of"] = np.nan
         df[["condition", "replicate"]] = df.cond_rep.str.split("_", expand=True)
         df["selected_peak"] = raw.apply(lambda x: np.argmax(x), axis=1)
         df[["peaks", "completeness", "go_score"]] = 0
         return df.reset_index(drop=True)
+
 
 
 class MultiExperiment(object):
@@ -423,7 +424,6 @@ class MultiExperiment(object):
         else:
             self.all_hypo = pd.DataFrame()
 
-
     def simil_graph_weight(self, hypo, names):
         """
         return a network where every edge between two nodes represents
@@ -488,7 +488,7 @@ class MultiExperiment(object):
             how="inner",
             on=["complex_id", "member", "cond_rep"],
         )
-        # reorder to not break differential
+        # reorder to not break differential\
         order = [
             "member",
             "complex_id",
@@ -502,13 +502,38 @@ class MultiExperiment(object):
             "go_score",
             "cond_rep",
             "raw_int",
+            'is_subcomplex_of'
         ]
-        # now add all single protein accession from each matrix if not present
-        self.protein_c = self.protein_c[order]
+        # # now add all single protein accession from each matrix if not present
+        # self.protein_c = self.protein_c[order]
+        # allprot = pd.concat([x.add_single_prot(order) for x in self.allexps])
         allprot = pd.concat([x.add_single_prot(order) for x in self.allexps])
+
         allprot = allprot[~allprot["member"].isin(self.protein_c["member"])]
         self.protein_c = pd.concat([self.protein_c, allprot], ignore_index=True)
         return self.protein_c
+    
+    def calc_subcomplexes(self):
+        self.complex_c_all["member_set"] = self.complex_c_all["members"].str.split("#").map(set)
+        ids = self.complex_c_all["complex_id"].values
+        sets = self.complex_c_all["member_set"].values
+        subcomplex_targets = []
+
+        for i, (id_i, set_i) in enumerate(zip(ids, sets)):
+            candidates = []
+            for j, (id_j, set_j) in enumerate(zip(ids, sets)):
+                if i == j:
+                    continue
+                if set_i.issubset(set_j):
+                    candidates.append((len(set_j), id_j))
+            if candidates:
+                # Select the smallest superset
+                subcomplex_targets.append(sorted(candidates)[0][1])
+            else:
+                subcomplex_targets.append(None)
+        self.complex_c_all["is_subcomplex_of"] = subcomplex_targets
+        self.complex_c_all.drop(columns=["member_set"], inplace=True)
+        
 
 def calc_calibration(calpath):
     """
@@ -589,9 +614,9 @@ def runner(tmp_, ids, cal, mw, fdr, mode):
         allexps.add_exps(exp)
     allexps.multi_collapse()
     allexps.combine_all()
+    allexps.calc_subcomplexes()
     final = allexps.protein_centric_combine()
     ## TODO add is_subcomplex column 
-    print()
     outname = os.path.join(tmp_, "combined.txt")
     final.drop(columns=["cond_rep"], inplace=True, errors='ignore')
     final.to_csv(outname, sep="\t", index=False)

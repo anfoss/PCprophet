@@ -133,10 +133,10 @@ def create_config():
     )
     parser.add_argument(
         '-dif',
-        help='skip differential analysis',
+        help='Perform differential analysis',
         dest='dif',
         action='store',
-        default=False,
+        default=True,
     )
     parser.add_argument('-v', dest='verbose', help='Verbose', action='store', default=1)
     parser.add_argument('-skip',
@@ -229,7 +229,6 @@ def main():
         config['GLOBAL']['temp'],
         config['GLOBAL']['diff'],
     )
-
 
 if __name__ == '__main__':
     try:

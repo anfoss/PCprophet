@@ -312,7 +312,6 @@ class BayesMANOVA:
             # expression assessment.
             return self.mrgllh4ids(cpxids2dat, m=m)
 
-
 # data input
 def prepcplxdata(
     dfrm,
@@ -320,8 +319,9 @@ def prepcplxdata(
     cplxcol,
     trgcol,
     valcols,
-    dologtrans=True,
-    minval=10 ** -17,
+    dologtrans=False,
+    # 10 ** -17
+    minval=10 ** -5,
     trg2indmap=True,
 ):
     """
@@ -460,7 +460,7 @@ def extract_local_peak(row, q, norm=True):
         return tmp[(pk - q) : (pk + q)]
 
 
-def extract_inte(df, q=72, norm=False, split_cmplx=False):
+def extract_inte(df, q=72, norm=True, split_cmplx=False):
     """
     modify combined to extract intensity and returns a df
     """
@@ -502,8 +502,6 @@ def differential_(fl, ids):
             dif_cmplx.append(cmplx)
     dif_prot = pd.concat(dif_prot)
     dif_cmplx = pd.concat(dif_cmplx)
-    
-    ## now rename and clean output
     return dif_cmplx, dif_prot
 
 
@@ -523,10 +521,9 @@ def create_complex_report(comb_df, stoic_df, sid_df, outfile):
     except Exception:
         print("Calibration not provided\nThe MW will not be estimated")
     comb_df = comb_df.drop(["peaks", "rescaled_int", "raw_int", "member"], axis=1)
-    # comb_df has exploded all proteins so rows are duplicated extensively.
+    # comb_df has exploded all proteins so rows are duplicated.
     # while most things are the same (GO scores, etc) the problem is that the
     # rf confidence and peak selected is different across various replicates.
-    # In this way we keep it separated
     # TBD if keeping replicates info or not
     com = comb_df.groupby(["complex_id", "condition", "replicate"], as_index=False).head(1)
     mrg = pd.merge(stoic_df, com, on=["complex_id", "condition"])
@@ -602,7 +599,6 @@ def create_ppi_report(cmplx_report_out, ppi_report_out):
     """
     df = pd.read_csv(cmplx_report_out)
     df = df[df['is_complex'] == 'positive']
-    #df = df.drop(['rf_probability',"shared_go_cellular_component", "shared_go_biological_process", "shared_go_molecular_function", "selected_peak" , 'completeness', 'go_score', 'molecular_weight', 'stoichiometry', 'in database'], axis=1)
     df = df[['complex_id', 'condition', 'replicate', 'members']]
     df['members'] = df['members'].str.split(':')
     df = df.explode(['members'], ignore_index=True)
@@ -703,6 +699,71 @@ def stoichiometry(df, q=3):
     return stoic_avg
 
 
+def log2fc_sec(comb_df, sid_df):
+    """
+    Computes log2 fold changes (log2FC) of protein abundances between experimental conditions and control, 
+    and aggregates these values at both the protein and protein complex levels.
+    Args:
+        comb_df (pd.DataFrame): DataFrame containing at least the columns 'member', 'complex_id', and 'condition', 
+            representing protein complex membership and experimental conditions.
+        sid_df (pd.DataFrame): DataFrame where each row corresponds to a sample, with columns 'Sample' (file path to 
+            quantification data), 'cond' (condition label), and 'repl' (replicate number).
+    Returns:
+        diff_prot (pd.DataFrame): DataFrame with columns ['complex_id', 'member', 'condition', 'log2fc_protein'], 
+            containing log2 fold changes for each protein member in each complex and condition.
+        diff_cmplx (pd.DataFrame): DataFrame with columns ['complex_id', 'condition', 'log2fc_protein'], 
+            containing mean log2 fold changes at the complex level for each condition.
+    Notes:
+        - Assumes input sample files contain columns 'protein_id' and 'gene_name', and are tab-separated.
+        - Performs median normalization and log2 transformation on protein abundance values.
+        - The control condition is assumed to be labeled 'Ctrl'.
+        - Ignores infinite and NaN values during normalization.
+    """
+    
+    def log2_fc(subdf):
+        tmp = []
+        for x in set(subdf['cond']):
+            ctrl = subdf[subdf['cond']=='Ctrl']['value'].mean()
+            if x != 'Ctrl':
+                treat = subdf[subdf['cond']==x]['value'].mean()
+                tmp.append([treat - ctrl, x])
+        return pd.DataFrame(tmp)
+        
+    prot_df = []
+    for fl in sid_df.itertuples():
+        tmp_df = pd.read_csv(fl.Sample, sep='\t')
+        tmp_df.set_index(['protein_id', 'gene_name'], inplace=True)
+        tmp_df = tmp_df.sum(axis=1).to_frame('value').reset_index()
+        tmp_df['cond_repl'] = fl.cond + '$' + str(fl.repl)
+        # 4 columns protein_id, gene_name, value, cond_repl
+        prot_df.append(tmp_df)
+    prot_df = pd.concat(prot_df)
+    prot_df = pd.pivot_table(prot_df, values='value', index=['protein_id', 'gene_name'], columns='cond_repl')
+    ## median normalized
+    prot_df = np.log2(prot_df)
+    prot_df.replace([np.inf, -np.inf], np.nan, inplace=True)
+    md = prot_df.mean(axis=0)
+    prot_df = prot_df - md + np.median(md)
+    ## now reshape 
+    prot_df = pd.melt(prot_df.reset_index(), id_vars=['protein_id', 'gene_name'], var_name='cond_repl', value_name='value')
+    prot_df = prot_df.reset_index()
+    prot_df[['cond', 'repl']] = prot_df['cond_repl'].str.split('$', expand=True)
+    prot_df = prot_df.groupby(['protein_id', 'gene_name']).apply(log2_fc)
+    prot_df.columns = ['log2fc_protein', 'cond']
+    prot_df = prot_df.reset_index()
+    # only need relationships gn -> complex_id -> cond
+    tokeep_df = comb_df[['member', 'complex_id', 'condition']].drop_duplicates()
+    ## merge into the combined file
+    fc_prot = pd.merge(tokeep_df, prot_df, left_on=['member', 'condition'], right_on=['gene_name', 'cond'], how='left')
+    fc_prot = fc_prot[['complex_id', 'member', 'condition', 'log2fc_protein']]
+    fc_prot = fc_prot[fc_prot['condition']!='Ctrl']
+    fc_prot.drop(['member'], axis=1, inplace=True)
+    # now groupby complex and get complex level fc
+    fc_cmplx = fc_prot.groupby(['complex_id', 'condition'])['log2fc_protein'].mean()
+    fc_cmplx = fc_cmplx.reset_index()
+    return fc_prot, fc_cmplx
+
+
 def runner(infile, sample_ids, outf, temp, dif):
     """
     Executes the differential analysis workflow for protein complexes and proteins.
@@ -733,8 +794,6 @@ def runner(infile, sample_ids, outf, temp, dif):
         
     # stoichiometry calculation    
     comb = pd.read_csv(infile, sep="\t")
-    print(comb[comb['complex_id'].str.contains('cmplx')])
-    assert False
     # remove single protein
     comb = comb[comb["rf_probability"] != -1]
     stoic_df = stoichiometry(comb, q=3)
@@ -755,12 +814,14 @@ def runner(infile, sample_ids, outf, temp, dif):
         print("No differential analysis performed, only control samples found.")
         return True
 
-    if dif == 'False':    
+    if dif == 'True':    
         ids = dict(zip(sid_df["cond"], sid_df["short_id"]))
         print(datetime.now())
 
         print("Performing differential analysis for complexes and proteins...")
 
+        ## now need to have one that is for FC 
+        fc_prot, fc_cmplx = log2fc_sec(comb_df, sid_df)
         dif_cmplx, dif_prot = differential_(infile, ids)
         cmplx_report_df = pd.read_csv(cmplx_report_out)
         cmplx_report_df = cmplx_report_df[
@@ -787,13 +848,16 @@ def runner(infile, sample_ids, outf, temp, dif):
             "PB4DEX": "probability_differential_assembly_state",
             "LGMLLHN": "assembly_state_log_marginal_likelihood_null",
             "LGMLLHA": "assembly_state_log_marginal_likelihood_alternative",
+            'sample_id':'condition'
         }
         dif_cmplx.rename(columns=nwnm, inplace=True)
+        dif_cmplx = pd.merge(dif_cmplx, fc_cmplx, on=['complex_id', 'condition'], how='left')
         dif_cmplx.to_csv(
             os.path.join(outf, "differential_complex_report.csv"), index=False
         )
         dif_prot.rename(columns=nwnm, inplace=True)
-        dif_prot.rename(columns={"ID": "gene_name"}, inplace=True)
+        dif_prot.rename(columns={"ID": "gene_name", 'sample_id':'condition'}, inplace=True)
+        dif_prot = pd.merge(dif_prot, dif_prot, on=['gene_name', 'condition'], how='left')
         dif_prot.to_csv(
             os.path.join(outf, "differential_protein_report.csv"), index=False
         )
