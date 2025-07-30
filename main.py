@@ -198,8 +198,7 @@ def preprocessing(infile, config):
 
 def main():
     config = create_config()
-    
-    
+
     ## add logging
     log_out = f"log_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.log"
     log_file = open(log_out, "w")
@@ -210,7 +209,7 @@ def main():
     validate.InputTester(config['GLOBAL']['sid'], 'ids').test_file()
     files = pd.read_csv(config['GLOBAL']['sid'], sep='\t')
     files = [os.path.abspath(x) for x in files['Sample']]
-    # skip feature generation
+
     if config['GLOBAL']['skip'] == 'False':
         [preprocessing(infile, config) for infile in files]
     collapse.runner(

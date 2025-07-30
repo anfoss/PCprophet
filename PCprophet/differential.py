@@ -321,7 +321,7 @@ def prepcplxdata(
     valcols,
     dologtrans=False,
     # 10 ** -17
-    minval=10 ** -5,
+    minval=10 ** -13,
     trg2indmap=True,
 ):
     """
@@ -627,11 +627,7 @@ def assembled(df, thr=0.3):
     """
     test for number of positive complex assignments to assign global assembly state for exp
     """
-    y = df[df["is_complex"] == "Positive"].shape[0]
-    if y / df.shape[0] >= thr:
-        return "Positive"
-    else:
-        return "Negative"
+    return df[df["is_complex"] == "positive"].shape[0] / df.shape[0]
 
 
 def stoichiometry(df, q=3):
@@ -728,7 +724,22 @@ def log2fc_sec(comb_df, sid_df):
                 treat = subdf[subdf['cond']==x]['value'].mean()
                 tmp.append([treat - ctrl, x])
         return pd.DataFrame(tmp)
-        
+
+    def subnan(col, q=0.05, shift=1.8, sd=None):
+
+        """
+        select lowest k quantile and create downshifted distribution of 1.8 sigma
+        returns series with nan sampled from distr
+        """
+        np.random.seed(0)
+        X = col.values
+        qs = X[np.where(X <= np.nanquantile(X, q))]
+        mu, sigma = np.mean(qs), np.std(qs)
+        if sd == None:
+            sd = sigma
+        X[np.isnan(X)] = np.random.normal(mu - shift * sigma, sd, size=np.isnan(X).sum())
+        return X
+
     prot_df = []
     for fl in sid_df.itertuples():
         tmp_df = pd.read_csv(fl.Sample, sep='\t')
@@ -740,14 +751,19 @@ def log2fc_sec(comb_df, sid_df):
     prot_df = pd.concat(prot_df)
     prot_df = pd.pivot_table(prot_df, values='value', index=['protein_id', 'gene_name'], columns='cond_repl')
     ## median normalized
+    ## to test with other ones? Like median polish / quantile?
     prot_df = np.log2(prot_df)
     prot_df.replace([np.inf, -np.inf], np.nan, inplace=True)
     md = prot_df.mean(axis=0)
     prot_df = prot_df - md + np.median(md)
-    ## now reshape 
+    ## need to impute nans maybe? for now this 
+
     prot_df = pd.melt(prot_df.reset_index(), id_vars=['protein_id', 'gene_name'], var_name='cond_repl', value_name='value')
     prot_df = prot_df.reset_index()
     prot_df[['cond', 'repl']] = prot_df['cond_repl'].str.split('$', expand=True)
+    prot_df['value'] = subnan(prot_df['value'])
+
+    ### need to be changed to extract pk
     prot_df = prot_df.groupby(['protein_id', 'gene_name']).apply(log2_fc)
     prot_df.columns = ['log2fc_protein', 'cond']
     prot_df = prot_df.reset_index()
@@ -755,13 +771,19 @@ def log2fc_sec(comb_df, sid_df):
     tokeep_df = comb_df[['member', 'complex_id', 'condition']].drop_duplicates()
     ## merge into the combined file
     fc_prot = pd.merge(tokeep_df, prot_df, left_on=['member', 'condition'], right_on=['gene_name', 'cond'], how='left')
-    fc_prot = fc_prot[['complex_id', 'member', 'condition', 'log2fc_protein']]
+    fc_prot = fc_prot[['complex_id', 'member', 'gene_name', 'condition', 'log2fc_protein']]
     fc_prot = fc_prot[fc_prot['condition']!='Ctrl']
     fc_prot.drop(['member'], axis=1, inplace=True)
     # now groupby complex and get complex level fc
     fc_cmplx = fc_prot.groupby(['complex_id', 'condition'])['log2fc_protein'].mean()
     fc_cmplx = fc_cmplx.reset_index()
-    return fc_prot, fc_cmplx
+    #now need to replace condition with sample ids in fc_cmplx
+    # then merge using short_id not condition
+    tomp = dict(zip(sid_df['cond'], sid_df['short_id']))
+    fc_cmplx['condition'] = fc_cmplx['condition'].map(tomp)
+    prot_df['condition'] = prot_df['cond'].map(tomp)
+    prot_df.drop(['cond', 'level_2', 'protein_id'], axis=1, inplace=True)
+    return prot_df, fc_cmplx
 
 
 def runner(infile, sample_ids, outf, temp, dif):
@@ -784,8 +806,6 @@ def runner(infile, sample_ids, outf, temp, dif):
         dif (str): Boolean to do or skip differential analysis
     Returns:
         bool: True if only one sample is present, otherwise None.
-    Raises:
-        AssertionError: Always raised due to the 'assert False' statement (likely for debugging).
     """
     print(datetime.now())
 
@@ -840,7 +860,7 @@ def runner(infile, sample_ids, outf, temp, dif):
         # assembly state for every condition
         ex = dif_cmplx.groupby(["complex_id"]).apply(assembled).reset_index()
         ex = dict(zip(list(ex["complex_id"]), list(ex[0])))
-        dif_cmplx["is_complex"] = dif_cmplx["complex_id"].map(ex)
+        dif_cmplx["percentage_is_complex_replicates"] = dif_cmplx["complex_id"].map(ex)
         dif_cmplx.drop_duplicates(
             subset=["sample_id", "complex_id"], keep="first", inplace=True
         )
@@ -848,16 +868,18 @@ def runner(infile, sample_ids, outf, temp, dif):
             "PB4DEX": "probability_differential_assembly_state",
             "LGMLLHN": "assembly_state_log_marginal_likelihood_null",
             "LGMLLHA": "assembly_state_log_marginal_likelihood_alternative",
-            'sample_id':'condition'
+            'sample_id':'condition',
+            'log2fc_protein' : 'log2fc_complex'
         }
         dif_cmplx.rename(columns=nwnm, inplace=True)
+        # condition is not present only sample ids
         dif_cmplx = pd.merge(dif_cmplx, fc_cmplx, on=['complex_id', 'condition'], how='left')
         dif_cmplx.to_csv(
             os.path.join(outf, "differential_complex_report.csv"), index=False
         )
         dif_prot.rename(columns=nwnm, inplace=True)
         dif_prot.rename(columns={"ID": "gene_name", 'sample_id':'condition'}, inplace=True)
-        dif_prot = pd.merge(dif_prot, dif_prot, on=['gene_name', 'condition'], how='left')
+        dif_prot = pd.merge(dif_prot, fc_prot, on=['gene_name', 'condition'], how='left')
         dif_prot.to_csv(
             os.path.join(outf, "differential_protein_report.csv"), index=False
         )

@@ -24,27 +24,12 @@ We recommend using [Anaconda](https://www.anaconda.com) to install and manage de
 #### On Windows
 
 If you're having trouble adding Anaconda or Python to your PATH, refer to these resources:
-- [Installing Anaconda on Windows](https://www.datacamp.com/community/tutorials/installing-anaconda-windows)
-- [DLL load error fix for NumPy and SciPy](https://stackoverflow.com/questions/54063285/numpy-is-already-installed-with-anaconda-but-i-get-an-importerror-dll-load-fail)
-
-#### Command Line Version (Git + LFS)
-
-To clone PCprophet including large files, make sure you have [Git Large File Storage (LFS)](https://git-lfs.com) installed:
-
-```
-git-lfs clone https://github.com/anfoss/PCprophet PCprophet
-```
-
-This will create a local folder called `PCprophet` containing the full repository.
+*- [Installing Anaconda on Windows](https://www.datacamp.com/community/tutorials/installing-anaconda-windows)
+*- [DLL load error fix for NumPy and SciPy](https://stackoverflow.com/questions/54063285/numpy-is-already-installed-with-anaconda-but-i-get-an-importerror-dll-load-fail)
 
 ## Usage
 
-Refer to the [PCprophet_instructions.md](https://github.com/anfoss/PCprophet/blob/master/PCprophet_instructions.md) for a complete guide on how to prepare data, configure parameters, and run the full analysis pipeline.
-
-## Authors
-
-- **Andrea Fossati** – Initial work – [anfoss](https://github.com/anfoss)
-- **Chen Li** – Initial work – chen.li@monash.edu
+Refer to the [PCprophet_instructions.md](https://github.com/anfoss/PCprophet/blob/dev-branch/PCprophet_instructions.md) for a complete guide on how to prepare data, configure parameters, and run the full analysis pipeline.
 
 ## License
 

@@ -26,7 +26,10 @@ Input data must be a wide-format matrix with:
 - `protein_id`: optional; UniProt, Ensembl, or NCBI identifier. Not essential
   (can be the same as *gene_name*)
 
-Remaining columns = ordered fraction intensities. Column names can be any format (e.g., `F01`, `1`, etc.), but **must be in correct order**. Formats like MS1, MS2 XIC, SPCs, TMT, and SILAC are supported.
+Remaining columns = ordered fraction intensities. Column names can be any
+format (e.g., `F01`, `1`, etc.), but **must be in correct order**. Formats like
+MS1, MS2 XIC, SPCs, TMT, and SILAC are supported. The best results are obtained
+using DIA-MS or DDA-MS data.
 
 See `test/test_fract.txt` for examples.
 
@@ -86,12 +89,13 @@ The `sample_ids.txt` must include:
 
 | Sample           | cond   | group | short_id  | repl | fr |
 |------------------|--------|-------|-----------|------|----|
-| `./Input/c1r1.txt` | Ctrl   | 1     | ipsc_2i_1 | 1    | 65 |
+| `./Input/c1r1.txt` | Ctrl   | 1     | ipsc_2i | 1    | 65 |
 
 - `Sample`: Full path to input file  
 - `cond`: Experimental condition (e.g., Ctrl, Treat1)  
 - `group`: 1 for control, 2+ for treatments  
-- `short_id`: Short identifier  
+- `short_id`: Short identifier -> can be anything but needs to match group i.e.
+  all group ==1 should have the same identifier
 - `repl`: Replicate number  
 - `fr`: Number of fractions
 
@@ -159,17 +163,17 @@ python3 main.py -db myppi.txt -is_ppi True
 
 All outputs are saved in:
 
-- `./tmp/`: intermediate results
+- `./tmp/`: intermediate results can be safely deleted
 - `./Output/`: final results
 
 ### Main Outputs
 
 | File | Description |
 |------|-------------|
-| `complex_report.txt` | Final predicted complexes (labeled as Reported or Novel) |
+| `complex_report.txt` | Final complexes |
 | `ppi_report.txt`     | Network view of complexes (Cytoscape-compatible) |
 
-### Differential Output (if `-dif True`)
+### Differential Output
 
 | File | Description |
 |------|-------------|
