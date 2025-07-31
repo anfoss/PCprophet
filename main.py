@@ -195,7 +195,7 @@ def preprocessing(infile, config):
     )
     return True
 
-
+# TODO add flag for Bayes vs geometric differential vs FC scoring
 def main():
     config = create_config()
 

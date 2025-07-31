@@ -480,30 +480,6 @@ def extract_inte(df, q=72, norm=True, split_cmplx=False):
     return df, vals
 
 
-def differential_(fl, ids):
-    """
-    performs differential analysis using first raw profiles (i.e abu)
-    and then by using the normalized (asm state)
-    this needs to be changed for raw use sum and log2FC while for asm use PS module
-    """
-    df = pd.read_csv(fl, sep="\t")
-    combined, vals = extract_inte(df, norm=False)
-    dif_prot, dif_cmplx = [], []
-    for cnd in ids.keys():
-        if cnd != "Ctrl":
-            tmp = combined[combined["condition"].isin(["Ctrl", cnd])]
-            prot = score_complexes(tmp, valcols=vals, mode="protein")
-            tmp = combined[combined["condition"].isin(["Ctrl", cnd])]
-            cmplx = score_complexes(tmp, valcols=vals, mode="cmplx")
-            # use the short_name in sample_ids.txt
-            prot["sample_id"] = ids[cnd]
-            cmplx["sample_id"] = ids[cnd]
-            dif_prot.append(prot)
-            dif_cmplx.append(cmplx)
-    dif_prot = pd.concat(dif_prot)
-    dif_cmplx = pd.concat(dif_cmplx)
-    return dif_cmplx, dif_prot
-
 
 def create_complex_report(comb_df, stoic_df, sid_df, outfile):
     def rescale_fr(x, fr):
@@ -695,7 +671,7 @@ def stoichiometry(df, q=3):
     return stoic_avg
 
 
-def log2fc_sec(comb_df, sid_df):
+def differential_fc(comb_df, sid_df):
     """
     Computes log2 fold changes (log2FC) of protein abundances between experimental conditions and control, 
     and aggregates these values at both the protein and protein complex levels.
@@ -777,13 +753,169 @@ def log2fc_sec(comb_df, sid_df):
     # now groupby complex and get complex level fc
     fc_cmplx = fc_prot.groupby(['complex_id', 'condition'])['log2fc_protein'].mean()
     fc_cmplx = fc_cmplx.reset_index()
+    fc_cmplx = fc_cmplx[~fc_cmplx['complex_id'].str.startswith('cmplx__')]
+
     #now need to replace condition with sample ids in fc_cmplx
     # then merge using short_id not condition
     tomp = dict(zip(sid_df['cond'], sid_df['short_id']))
     fc_cmplx['condition'] = fc_cmplx['condition'].map(tomp)
     prot_df['condition'] = prot_df['cond'].map(tomp)
     prot_df.drop(['cond', 'level_2', 'protein_id'], axis=1, inplace=True)
+    prot_df = prot_df[prot_df['gene_name'].isin(comb_df['member'])]
     return prot_df, fc_cmplx
+
+
+def differential_dotp(comb_df, sid_df):
+    """
+    Computes differential dot product (dotp) similarity scores between control and treatment conditions
+    for protein complex members, using a square root angle-based metric.
+    The function processes a DataFrame of protein complex quantifications, calculates pairwise dotp scores
+    between control and treatment replicates for each protein member, and aggregates these scores at both
+    the protein and complex levels. The resulting scores represent the average similarity between the
+    abundance profiles of proteins (and complexes) in control versus treatment conditions.
+    Parameters
+    ----------
+    comb_df : pandas.DataFrame
+        DataFrame containing quantification data for protein complex members. Expected columns include:
+        - 'member': protein or gene identifier
+        - 'complex_id': complex identifier
+        - 'condition': experimental condition (e.g., 'Ctrl', treatment names)
+        - 'replicate': replicate identifier
+        - 'rescaled_int': string of intensity values separated by '#'
+    sid_df : pandas.DataFrame
+        DataFrame mapping condition names to short identifiers. Expected columns:
+        - 'cond': original condition name
+        - 'short_id': short identifier for the condition
+    Returns
+    -------
+    prot_dotp : pandas.DataFrame
+        DataFrame with average dotp scores for each protein member and condition.
+        Columns: ['gene_name', 'condition', 'dotp']
+    cmplx_dotp : pandas.DataFrame
+        DataFrame with average dotp scores for each complex and condition.
+        Columns: ['condition', 'complex_id', 'dotp']
+    Notes
+    -----
+    - The dotp score is computed using a square root angle metric, which
+      measures the similarity between two abundance profiles, normalized to [0,
+      1].
+    - Only non-control conditions are included in the complex-level aggregation.
+    - Condition names are mapped to short identifiers using `sid_df`.
+    """
+    def angle_sqrt(s1, s2):
+        s1 = np.asarray(s1, dtype=np.float64)
+        s2 = np.asarray(s2, dtype=np.float64)
+
+        s1 /= s1.sum()
+        s2 /= s2.sum()
+
+        sqrt_s1 = np.sqrt(s1)
+        sqrt_s2 = np.sqrt(s2)
+
+        sum_cross = np.dot(sqrt_s1, sqrt_s2)
+        sum_left = np.dot(sqrt_s1, sqrt_s1)
+        sum_right = np.dot(sqrt_s2, sqrt_s2)
+
+        if sum_left == 0 or sum_right == 0:
+            return 0.0
+
+        angle = min(1.0, sum_cross / np.sqrt(sum_left * sum_right))  # clamp for safety
+        # this has 1- so 1 max differences
+        return 1-(1 - (np.arccos(angle) * 2 / np.pi))
+
+    def process_single_protein(subdf):
+        ctrl = subdf[subdf['condition'] == 'Ctrl']
+        treat = subdf[subdf['condition'] != 'Ctrl']
+        
+        # If no control or no treatment data, return empty DataFrame with correct columns
+        if ctrl.empty or treat.empty:
+           return pd.DataFrame({'dotp': pd.Series(dtype='float64'),
+                     'condition': pd.Series(dtype='object')})
+
+
+        ctrl_dict = {
+            rep: np.asarray(vals, dtype=np.float64)
+            for rep, vals in zip(ctrl['replicate'], ctrl['rescaled_int'])
+        }
+        treat_dict = {}
+        for cond in treat['condition'].unique():
+            treat_df = treat[treat['condition'] == cond]
+            treat_dict[cond] = {
+                rep: np.asarray(vals, dtype=np.float64)
+                for rep, vals in zip(treat_df['replicate'], treat_df['rescaled_int'])
+            }
+
+        out = []
+        for cond, rep_dict in treat_dict.items():
+            for rep_treat, treat_vals in rep_dict.items():
+                for rep_ctrl, ctrl_vals in ctrl_dict.items():
+                    score = angle_sqrt(treat_vals, ctrl_vals)
+                    out.append([score, cond])
+        if not out:
+            return pd.DataFrame({'dotp': pd.Series(dtype='float64'),
+                     'condition': pd.Series(dtype='object')})
+  
+        df_out = pd.DataFrame(out, columns=['dotp', 'condition'])
+        return df_out.groupby('condition', as_index=False)['dotp'].mean()
+
+    ## need to rename dds after
+    dd = comb_df.drop_duplicates(['member', 'condition', 'replicate']).copy()
+    dd['rescaled_int'] = dd['rescaled_int'].str.split('#')
+    dd['rescaled_int'] = dd['rescaled_int'].map(lambda lst: np.fromiter((float(x) for x in lst), dtype=np.float64))
+    prot_dotp = dd.groupby('member', group_keys=True).apply(process_single_protein).reset_index()
+    dd = comb_df[['member', 'complex_id', 'condition']].drop_duplicates().copy()
+    dd =dd[dd['member']!=dd['complex_id']]
+    dd = dd[dd['condition']!='Ctrl']
+    dd = dd[~dd['complex_id'].str.startswith('cmplx__')]
+    ### now need to merge complex in there
+    prot_dopt = prot_dotp[['member', 'condition', 'dotp']]
+    cmplx_dotp = pd.merge(dd, prot_dotp, how='left', on=['condition', 'member'])
+    cmplx_dotp = cmplx_dotp.groupby(['condition', 'complex_id'], as_index=False)['dotp'].mean()
+    
+    ## now need to replace condition with dict zip whatever
+    tomp = dict(zip(sid_df['cond'], sid_df['short_id']))
+    cmplx_dotp['condition'] = cmplx_dotp['condition'].map(tomp)
+    prot_dotp['condition'] = prot_dotp['condition'].map(tomp)
+    
+    ## rename
+    prot_dotp.rename(columns={"member": "gene_name"}, inplace=True)
+    return prot_dotp, cmplx_dotp
+
+
+def differential_bayes(fl, ids):
+    """
+    performs differential analysis using first raw profiles (i.e abu)
+    and then by using the normalized (asm state)
+    this needs to be changed for raw use sum and log2FC while for asm use PS module
+    """
+    df = pd.read_csv(fl, sep="\t")
+    combined, vals = extract_inte(df, norm=False)
+    dif_prot, dif_cmplx = [], []
+    for cnd in ids.keys():
+        if cnd != "Ctrl":
+            tmp = combined[combined["condition"].isin(["Ctrl", cnd])]
+            prot = score_complexes(tmp, valcols=vals, mode="protein")
+            tmp = combined[combined["condition"].isin(["Ctrl", cnd])]
+            cmplx = score_complexes(tmp, valcols=vals, mode="cmplx")
+            # use the short_name in sample_ids.txt
+            prot["sample_id"] = ids[cnd]
+            cmplx["sample_id"] = ids[cnd]
+            dif_prot.append(prot)
+            dif_cmplx.append(cmplx)
+    dif_prot = pd.concat(dif_prot)
+    dif_cmplx = pd.concat(dif_cmplx)
+    nwnm = {
+        "PB4DEX": "probability_differential_assembly_state",
+        "LGMLLHN": "assembly_state_log_marginal_likelihood_null",
+        "LGMLLHA": "assembly_state_log_marginal_likelihood_alternative",
+        'sample_id':'condition',
+        'log2fc_protein' : 'log2fc_complex'
+    }
+    dif_cmplx.rename(columns=nwnm, inplace=True)
+    dif_prot.rename(columns=nwnm, inplace=True)
+    dif_prot.rename(columns={"ID": "gene_name", 'sample_id':'condition'}, inplace=True)
+
+    return dif_cmplx, dif_prot
 
 
 def runner(infile, sample_ids, outf, temp, dif):
@@ -835,53 +967,67 @@ def runner(infile, sample_ids, outf, temp, dif):
         return True
 
     if dif == 'True':    
+        
+        cmplx_report_df = pd.read_csv(cmplx_report_out)
+        cmplx_report_df = cmplx_report_df[
+            ["sample_id", "replicate", "is_complex", "complex_id", "members"]
+        ]
+        
         ids = dict(zip(sid_df["cond"], sid_df["short_id"]))
         print(datetime.now())
 
         print("Performing differential analysis for complexes and proteins...")
 
         ## now need to have one that is for FC 
-        fc_prot, fc_cmplx = log2fc_sec(comb_df, sid_df)
-        dif_cmplx, dif_prot = differential_(infile, ids)
-        cmplx_report_df = pd.read_csv(cmplx_report_out)
-        cmplx_report_df = cmplx_report_df[
-            ["sample_id", "replicate", "is_complex", "complex_id", "members"]
-        ]
-        # remove single prot accession i.e single ID in the differential complex file
-        dif_cmplx = dif_cmplx[~dif_cmplx["ID"].isin(dif_prot["ID"])]
-        # this will duplicate the entry
-        dif_cmplx = pd.merge(
-            cmplx_report_df,
-            dif_cmplx,
-            left_on=["complex_id", "sample_id"],
-            right_on=["ID", "sample_id"],
-        ).drop(columns=["ID", "replicate"])
-        # count the number of positive complex assignments to assign global
-        # assembly state for every condition
-        ex = dif_cmplx.groupby(["complex_id"]).apply(assembled).reset_index()
-        ex = dict(zip(list(ex["complex_id"]), list(ex[0])))
-        dif_cmplx["percentage_is_complex_replicates"] = dif_cmplx["complex_id"].map(ex)
-        dif_cmplx.drop_duplicates(
-            subset=["sample_id", "complex_id"], keep="first", inplace=True
+        ## make sure these have the same format (protein_name, condition, value for prot level and complex_id, member, condition, value for cmplx level)
+
+        fc_prot, fc_cmplx = differential_fc(comb_df, sid_df)
+        dotp_prot, dotp_cmplx = differential_dotp(comb_df, sid_df)
+        dif_prot = pd.merge(
+            fc_prot, 
+            dotp_prot, 
+            on=['gene_name', 'condition'], 
+            how='outer', 
         )
-        nwnm = {
-            "PB4DEX": "probability_differential_assembly_state",
-            "LGMLLHN": "assembly_state_log_marginal_likelihood_null",
-            "LGMLLHA": "assembly_state_log_marginal_likelihood_alternative",
-            'sample_id':'condition',
-            'log2fc_protein' : 'log2fc_complex'
-        }
-        dif_cmplx.rename(columns=nwnm, inplace=True)
-        # condition is not present only sample ids
-        dif_cmplx = pd.merge(dif_cmplx, fc_cmplx, on=['complex_id', 'condition'], how='left')
-        dif_cmplx.to_csv(
-            os.path.join(outf, "differential_complex_report.csv"), index=False
-        )
-        dif_prot.rename(columns=nwnm, inplace=True)
-        dif_prot.rename(columns={"ID": "gene_name", 'sample_id':'condition'}, inplace=True)
-        dif_prot = pd.merge(dif_prot, fc_prot, on=['gene_name', 'condition'], how='left')
         dif_prot.to_csv(
             os.path.join(outf, "differential_protein_report.csv"), index=False
         )
+
+        dif_cmplx = pd.merge(
+            fc_cmplx, 
+            dotp_cmplx, 
+            on=['complex_id', 'condition'], 
+            how='outer', 
+        )
+
+        dif_cmplx.to_csv(
+            os.path.join(outf, "differential_complex_report.csv"), index=False
+        )
+
+        # dif_cmplx, dif_prot = differential_bayes(infile, ids)
+        # print(df_cmplx.shape, dif_prot.shape)
+        # dif_cmplx.to_csv('test_cmplx.csv')
+        # dif_prot.to_csv('test_prot.csv')
+        # assert False
+
+        # dif_cmplx = dif_cmplx[~dif_cmplx["ID"].isin(dif_prot["ID"])]
+        # # this will duplicate the entry
+        # dif_cmplx = pd.merge(
+        #     cmplx_report_df,
+        #     dif_cmplx,
+        #     left_on=["complex_id", "sample_id"],
+        #     right_on=["ID", "sample_id"],
+        # ).drop(columns=["ID", "replicate"])
+        # # count the number of positive complex assignments to assign global
+        # # assembly state for every condition
+        # ex = dif_cmplx.groupby(["complex_id"]).apply(assembled).reset_index()
+        # ex = dict(zip(list(ex["complex_id"]), list(ex[0])))
+        # dif_cmplx["percentage_is_complex_replicates"] = dif_cmplx["complex_id"].map(ex)
+        # dif_cmplx.drop_duplicates(
+        #     subset=["sample_id", "complex_id"], keep="first", inplace=True
+        # )
+
+        # dif_cmplx = pd.merge(dif_cmplx, fc_cmplx, on=['complex_id', 'condition'], how='left')
+        # dif_prot = pd.merge(dif_prot, fc_prot, on=['gene_name', 'condition'], how='left')
         print(datetime.now())
     return True
