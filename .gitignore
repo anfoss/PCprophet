@@ -168,5 +168,5 @@ training_data
 *.tsv
 *.csv
 gaf
-.ipynb
+*.ipynb
 test/

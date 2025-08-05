@@ -159,6 +159,7 @@ def create_config():
         'sid': args.sample_ids,
         'go_obo': io.resource_path("meta/go_graph.graphml"),
         'sp_go': io.resource_path("meta/go_gaf.pkl"),
+        'rf': io.resource_path("meta/rf_allneg.pkl")
         'output': args.out_folder,
         'cal': args.calibration,
         'mw': args.mwuni,
@@ -192,10 +193,10 @@ def preprocessing(infile, config):
         base=tmp_folder,
         go_obo=config['GLOBAL']['go_obo'],
         tsp_go=config['GLOBAL']['sp_go'],
+        model=config['GLOBL']['rf']
     )
     return True
 
-# TODO add flag for Bayes vs geometric differential vs FC scoring
 def main():
     config = create_config()
 
