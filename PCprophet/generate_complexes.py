@@ -5,6 +5,7 @@ import networkx as nx
 import pandas as pd
 import numpy as np
 from scipy import cluster
+from scipy.sparse import csr_matrix
 import uuid
 import scipy.ndimage as image
 import scipy.signal as signal_processing
@@ -75,32 +76,34 @@ def center_row(arr, fr_nr="all", smooth=True, stretch=(True, 72), resc=True):
     return key
 
 
-def create_db_from_cluster(nodes, clusters):
-    idx = 1
+def complex_from_clusters(idx_to_gn, clusters):
     ids = "ppi"
-    path = io.resource_path("./ppi_db.txt")
-    #create_file(path, header)
-    towrout = []
-    for cmplx in clusters:
-        nm = ";".join([str(nodes[x]) for x in list(cmplx)])
-        tmp = "_".join([ids, str(idx)])
-        towrout.append([str(idx), tmp, nm])
-        idx += 1
-    dd = pd.DataFrame(towrout, columns=["complex_id", "complex_name", "subunits_gene_name"])
-    return True
+    data = [
+        [str(i+1), f"{ids}_{i+1}", ";".join(str(idx_to_gn[x]) for x in cmplx)]
+        for i, cmplx in enumerate(clusters)
+    ]
+    return pd.DataFrame(data, columns=["complex_id", "complex_name", "subunits_gene_name"])
 
 
 def rec_mcl(path):
     df = pd.read_csv(path, sep="\t")
-    G = nx.from_pandas_edgelist(df, source="protA", target="protB")
-    matrix = nx.to_scipy_sparse_array(G)
+    G = nx.from_pandas_edgelist(df, source="protein1", target="protein2")
+    nodelist = list(G.nodes())
+
+    # need to pass the order or csr matrix is random
+    matrix = csr_matrix(nx.to_scipy_sparse_array(G, nodelist=nodelist))
+
+    #matrix is CSR format
+    #https://networkx.org/documentation/stable/reference/generated/networkx.convert_matrix.to_scipy_sparse_array.html
+    # TODO add weights
     result = mc.run_mcl(matrix)
     clusters = mc.get_clusters(result)
+    # optimize and re_run
     opt = mc.run_mcl(matrix, inflation=optimize_mcl(matrix, result, clusters))
     clusters = mc.get_clusters(opt)
-    node = dict(enumerate(G.nodes()))
-    create_db_from_cluster(node, clusters)
-    return True
+    idx_to_gn = dict(enumerate(nodelist))
+    df = complex_from_clusters(idx_to_gn, clusters)
+    df.to_csv(io.resource_path("ppi_db.txt"), sep='\t', index=False)
 
 
 def optimize_mcl(matrix, results, clusters):
@@ -114,17 +117,6 @@ def optimize_mcl(matrix, results, clusters):
             infl = inflation
             qscore = newmax
     return infl
-
-
-# TODO double check if this is correct
-def format_cluster(hoa, clust):
-    out = {}
-    lk = {k: ",".join(map(str, v)) for k, v in hoa.items()}
-    for gn in clust.values():
-        if len(gn) > 1 and len(gn) <= 100:
-            gn = [x if x in lk else re.sub(r"_\d+$", "", x) for x in gn]
-            out["#".join(gn)] = ["#".join([lk[x] for x in gn])]
-    return out
 
 
 def decondense(df, ids):
@@ -298,9 +290,13 @@ def runner(infile, db, is_ppi, hypothesis):
     
     #### reported complexes
     if is_ppi == "True":
-        # cluster the ppi db into a database
-        rec_mcl(db)
-        db = io.resource_path("./ppi_db.txt")
+        ppi_path = io.resource_path("ppi_db.txt")
+        if not os.path.exists(ppi_path):
+            print('PPI network detected, performing network clustering')
+            rec_mcl(db)
+
+        db = ppi_path
+        print('Generated complex database from PPI network')
     db = pd.read_csv(db, sep='\t')
     
     ## need to put also gene_name in uppercase
@@ -332,7 +328,11 @@ def runner(infile, db, is_ppi, hypothesis):
     db = db[db['complex_id'].isin(cmplt)]
     # db = db.rename(columns={'subunits_gene_name': 'gene_name'})
     db_prot = pd.merge(db, prot_norm, right_on='gene_name', left_on='subunits_gene_name', how='inner').drop(columns=['gene_name'])
-    db_prot = dedup_complexes(db_prot, max_size=1000, min_size=2)
+    if is_ppi == 'True':
+        max_size=30
+    else:
+        max_size=1000
+    db_prot = dedup_complexes(db_prot, max_size=max_size, min_size=2)
     db_prot.to_csv(os.path.join(base, "ann_cmplx.txt"), sep="\t", index=False)
     # Print number of mapped complexes
     num_mapped = db_prot['complex_id'].nunique()

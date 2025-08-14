@@ -62,7 +62,7 @@ class InputTester(object):
                 self.test_all(col, unique)
                 [self.test_empty(x for x in col)]
             except PCpexc.MissingColumnError as e:
-                self.test_missing_col(["protA", "protB"])
+                self.test_missing_col(["protein1", "protein2"])
         elif self.filetype == "in":
             col = ["gene_name", "protein_id"]
             unique = ["gene_name"]

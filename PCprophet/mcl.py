@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.sparse import isspmatrix, dok_matrix, csc_matrix
+from scipy.sparse import isspmatrix, dok_matrix, csc_matrix, csr_matrix
 import sklearn.preprocessing
 from fractions import Fraction
 from itertools import permutations
@@ -9,28 +9,14 @@ import networkx as nx
 from matplotlib.pylab import show, cm, axis
 
 
-class Printer(object):
-    def __init__(self, enabled):
-        self._enabled = enabled
-
-    def enable(self):
-        self._enabled = True
-
-    def disable(self):
-        self._enabled = False
-
-    def print(self, string):
-        if self._enabled:
-            print(string)
-
-
 def sparse_allclose(a, b, rtol=1e-5, atol=1e-8):
-    """
-    Version of np.allclose for use with sparse matrices
-    """
-    c = np.abs(a - b) - rtol * np.abs(b)
-    # noinspection PyUnresolvedReferences
-    return c.max() <= atol
+    if isspmatrix(a) and isspmatrix(b):
+        diff = (a - b).copy()
+        diff.data = np.abs(diff.data)
+        max_diff = diff.max()
+        return max_diff <= atol + rtol * np.max(np.abs(b.data))
+    else:
+        return np.allclose(a, b, rtol=rtol, atol=atol)
 
 
 def normalize(matrix):
@@ -61,16 +47,18 @@ def inflate(matrix, power):
 def expand(matrix, power):
     """
     Apply cluster expansion to the given matrix by raising
-    the matrix to the given power.
-
-    :param matrix: The matrix to be expanded
-    :param power: Cluster expansion parameter
-    :returns: The expanded matrix
+    the matrix to the given power using matrix multiplication.
     """
+    if power < 1 or not isinstance(power, int):
+        raise ValueError("Power must be a positive integer")
     if isspmatrix(matrix):
-        return matrix ** power
+        result = matrix
+        for _ in range(power - 1):
+            result = result @ matrix  # sparse matrix multiplication
+        return result
+    else:
+        return np.linalg.matrix_power(matrix, power)
 
-    return np.linalg.matrix_power(matrix, power)
 
 
 def add_self_loops(matrix, loop_value):
@@ -84,19 +72,18 @@ def add_self_loops(matrix, loop_value):
     """
     shape = matrix.shape
     assert shape[0] == shape[1], "Error, matrix is not square"
-
     if isspmatrix(matrix):
-        new_matrix = matrix.todok()
+        # Convert to LIL for efficient assignment
+        new_matrix = matrix.tolil()
+        for i in range(shape[0]):
+            new_matrix[i, i] = loop_value
+        # Convert back to CSC for consistency
+        return new_matrix.tocsc()
     else:
         new_matrix = matrix.copy()
-
-    for i in range(shape[0]):
-        new_matrix[i, i] = loop_value
-
-    if isspmatrix(matrix):
-        return new_matrix.tocsc()
-
-    return new_matrix
+        for i in range(shape[0]):
+            new_matrix[i, i] = loop_value
+        return new_matrix
 
 
 def prune(matrix, threshold):
@@ -140,48 +127,29 @@ def converged(matrix1, matrix2):
     return np.allclose(matrix1, matrix2)
 
 
-def iterate(matrix, expansion, inflation):
-    """
-    Run a single iteration (expansion + inflation) of the mcl algorithm
-
-    :param matrix: The matrix to perform the iteration on
-    :param expansion: Cluster expansion factor
-    :param inflation: Cluster inflation factor
-    """
-    # Expansion
-    matrix = expand(matrix, expansion)
-
-    # Inflation
-    matrix = inflate(matrix, inflation)
-
-    return matrix
-
 
 def get_clusters(matrix):
     """
-    Retrieve the clusters from the matrix
-
-    :param matrix: The matrix produced by the MCL algorithm
-    :returns: A list of tuples where each tuple represents a cluster and
-              contains the indices of the nodes belonging to the cluster
+    Retrieve clusters from the MCL matrix (optimized).
     """
     if not isspmatrix(matrix):
-        # cast to sparse so that we don't need to handle different
-        # matrix types
-        matrix = csc_matrix(matrix)
+        matrix = csr_matrix(matrix)  # CSR for fast row slicing
+    elif not isinstance(matrix, csr_matrix):
+        matrix = matrix.tocsr()
 
-    # get the attractors - non-zero elements of the matrix diagonal
     attractors = matrix.diagonal().nonzero()[0]
+    submatrix = matrix[attractors]
+    clusters = []
+    indptr = submatrix.indptr
+    indices = submatrix.indices
+    for i in range(len(attractors)):
+        start, end = indptr[i], indptr[i+1]
+        clusters.append(tuple(indices[start:end]))
 
-    # somewhere to put the clusters
-    clusters = set()
+    unique_clusters = sorted(set(clusters))
 
-    # the nodes in the same row as each attractor form a cluster
-    for attractor in attractors:
-        cluster = tuple(matrix.getrow(attractor).nonzero()[1].tolist())
-        clusters.add(cluster)
+    return unique_clusters
 
-    return sorted(list(clusters))
 
 
 def run_mcl(
@@ -189,7 +157,7 @@ def run_mcl(
     expansion=2,
     inflation=2,
     loop_value=1,
-    iterations=1000,
+    iterations=100,
     pruning_threshold=0.001,
     pruning_frequency=1,
     convergence_check_frequency=1,
@@ -220,62 +188,23 @@ def run_mcl(
     assert pruning_threshold >= 0, "Invalid pruning_threshold"
     assert pruning_frequency > 0, "Invalid pruning_frequency"
     assert convergence_check_frequency > 0, "Invalid convergence_check_frequency"
-    printer = Printer(verbose)
-    printer.print("-" * 50)
-    printer.print("MCL Parameters")
-    printer.print("Expansion: {}".format(expansion))
-    printer.print("Inflation: {}".format(inflation))
-    if pruning_threshold > 0:
-        printer.print(
-            "Pruning threshold: {}, frequency: {} iteration{}".format(
-                pruning_threshold,
-                pruning_frequency,
-                "s" if pruning_frequency > 1 else "",
-            )
-        )
-    else:
-        printer.print("No pruning")
-    printer.print(
-        "Convergence check: {} iteration{}".format(
-            convergence_check_frequency, "s" if convergence_check_frequency > 1 else ""
-        )
-    )
-    printer.print("Maximum iterations: {}".format(iterations))
-    printer.print("{} matrix mode".format("Sparse" if isspmatrix(matrix) else "Dense"))
-    printer.print("-" * 50)
-
-    # Initialize self-loops
     if loop_value > 0:
         matrix = add_self_loops(matrix, loop_value)
-
-    # Normalize
     matrix = normalize(matrix)
-
-    # iterations
     for i in range(iterations):
-        printer.print("Iteration {}".format(i + 1))
 
         # store current matrix for convergence checking
         last_mat = matrix.copy()
-
-        # perform MCL expansion and inflation
-        matrix = iterate(matrix, expansion, inflation)
-
-        # prune
+        matrix = expand(matrix, expansion)
+        matrix = inflate(matrix, inflation)
         if pruning_threshold > 0 and i % pruning_frequency == pruning_frequency - 1:
-            printer.print("Pruning")
             matrix = prune(matrix, pruning_threshold)
 
         # Check for convergence
         if i % convergence_check_frequency == convergence_check_frequency - 1:
-            printer.print("Checking for convergence")
             if converged(matrix, last_mat):
-                printer.print(
-                    "Converged after {} iteration{}".format(i + 1, "s" if i > 0 else "")
-                )
                 break
 
-    printer.print("-" * 50)
     return matrix
 
 
@@ -310,51 +239,32 @@ def convert_to_adjacency_matrix(matrix):
     return matrix
 
 
-def delta_matrix(matrix, clusters):
-    """
-    Compute delta matrix where delta[i,j]=1 if i and j belong
-    to same cluster and i!=j
-
-    :param matrix: The adjacency matrix
-    :param clusters: The clusters returned by get_clusters
-    :returns: delta matrix
-    """
+def modularity(matrix, clusters, undirected=True):
+    # Ensure CSR for fast row slicing
     if isspmatrix(matrix):
-        delta = dok_matrix(matrix.shape)
-    else:
-        delta = np.zeros(matrix.shape)
+        matrix = matrix.tocsr()
 
-    for i in clusters:
-        for j in permutations(i, 2):
-            delta[j] = 1
-
-    return delta
-
-
-def modularity(matrix, clusters):
-    """
-    Compute the modularity
-    :param matrix: The adjacency matrix
-    :param clusters: The clusters returned by get_clusters
-    :returns: modularity value
-    """
-    # matrix = convert_to_adjacency_matrix(matrix)
     m = matrix.sum()
+    if undirected:
+        m /= 2  # In undirected graphs, sum counts each edge twice
 
-    if isspmatrix(matrix):
-        matrix_2 = matrix.tocsr(copy=True)
+    # Precompute degrees
+    if undirected:
+        degrees = np.array(matrix.sum(axis=1)).flatten()
     else:
-        matrix_2 = matrix
+        out_deg = np.array(matrix.sum(axis=1)).flatten()
+        in_deg = np.array(matrix.sum(axis=0)).flatten()
 
-    if is_undirected(matrix):
-        expected = lambda i, j: (
-            (matrix_2[i, :].sum() + matrix[:, i].sum())
-            * (matrix[:, j].sum() + matrix_2[j, :].sum())
-        )
-    else:
-        expected = lambda i, j: (matrix_2[i, :].sum() * matrix[:, j].sum())
+    Q = 0.0
+    for cluster in clusters:
+        cluster = list(cluster)
+        submat = matrix[cluster, :][:, cluster]  # adjacency for cluster
 
-    delta = delta_matrix(matrix, clusters)
-    indices = np.array(delta.nonzero())
-    Q = sum(matrix[i, j] - expected(i, j) / m for i, j in indices.T) / m
+        e_c = submat.sum()
+        if undirected:
+            e_c /= 2  # each edge counted twice
+
+        a_c = degrees[cluster].sum() if undirected else out_deg[cluster].sum()
+        Q += (e_c / m) - (a_c / (2 * m)) ** 2 if undirected else (e_c / m) - (a_c * in_deg[cluster].sum()) / (m**2)
+
     return Q

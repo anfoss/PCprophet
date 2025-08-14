@@ -458,7 +458,7 @@ def gen_peaks(s):
         return None
 
 
-def runner(base, go_obo, tsp_go, model=None):
+def runner(base, go_obo, tsp_go, model):
     """
     generate all features from the mapped complexes file
     base = config[GLOBAL][TEMP]filename
@@ -511,10 +511,6 @@ def runner(base, go_obo, tsp_go, model=None):
     feat_num = feats[ordered_cols].copy().apply(pd.to_numeric)
     feat_num.replace([np.nan, "nan", "na", ""], 0, inplace=True)
 
-    if model is None:
-            model = os.path.join(
-            os.path.dirname(os.path.realpath(__file__)), "rf_allneg.pkl"
-        )
     print('Predicting interactions for {}'.format(cmplx_file))
     clf = joblib.load(model)
     prob = clf.predict_proba(feat_num.values)

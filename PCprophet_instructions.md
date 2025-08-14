@@ -115,7 +115,7 @@ Must include:
 
 ### PPI Network
 
-| ProtA | ProtB |
+| protein1 | protein2 |
 |-------|-------|
 | A     | B     |
 
