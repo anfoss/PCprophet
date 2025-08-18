@@ -170,3 +170,5 @@ training_data
 gaf
 *.ipynb
 test/
+cal_predicted.txt
+cal_file.txt

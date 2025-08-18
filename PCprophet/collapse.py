@@ -155,17 +155,8 @@ class ProphetExperiment(object):
         self.peaks_c = peaks_c
         return peaks_c
 
-
     def add_mw(self, mw):
-        # force conversion to float
-        mw2 = {}
-        for k in mw.keys():
-            try:
-                for k2 in k.split(" "):
-                    mw2[k2] = mw[k].replace(",", "")
-            except AttributeError:
-                pass
-        self.mw = mw2
+        self.mw = mw
 
     def similarity_graph(self, l, names, ov=0.5):
         """
@@ -296,8 +287,11 @@ class ProphetExperiment(object):
         """
         collapse to minimun error from calibration curve
         """
-        calc_mw = lambda x, mw: sum([float(mw[gn]) for gn in x.split("#")])
+        ### if not available the mw is estimated at 50 Kda for every protein missing
+        calc_mw = lambda x, mw: sum([mw.get(gn, 50000) for gn in x.split("#")])
         totest["w"] = totest["members"].apply(calc_mw, mw=self.mw)
+        print(totest.head(10))
+        assert False
         tmp = self.peaks[self.peaks["protein_id"].isin(totest.index)]
         tmp = tmp.groupby(["protein_id"]).mean().selected_peak.apply(np.round)
         tmp.replace(self.cal, inplace=True)
@@ -540,23 +534,43 @@ def calc_calibration(calpath):
     calculate the calibration curve from a file with fraction and
     return a dict fract
     """
+    import matplotlib.pyplot as plt
+    
     from sklearn.linear_model import LinearRegression
-    calp = pd.read_csv(calpath, sep='\t', header=None)
-    fr, mw = list(calp[0]), list(calp[1])
+    calp = pd.read_csv(calpath, sep='\t')
+    fr, mw = list(calp['fraction_number']), list(calp['molecular_weight_kda'])
     mw = np.array([np.log10(x*1000) for x in mw]).reshape(-1, 1)
     fr = np.array(fr).reshape(-1, 1)
     lr = LinearRegression().fit(fr.reshape(-1,1), mw.reshape(-1,1))
     xnew = list(range(1, 73))
     print('R2 score for calibration regression is {}'.format(lr.score(fr ,mw)))
-    coef, inter = lr.coef_.flatten()[0], lr.intercept_.flatten()[0]
+    coef = lr.coef_[0][0]
+    inter = lr.intercept_[0]
     # Kda
-    def calcfr(x): return ((10**(-abs(coef)*x + inter))/1000)
-    cal_d = pd.DataFrame({'FR': xnew, 'MW': [calcfr(x) for x in xnew]})
-    cal_d.to_csv('cal.txt', sep='\t', index=False)
-    return dict(zip(cal_d['FR'], cal_d['MW']))
+    calcfr = lambda x: (10**(coef*x + inter)) / 1000
+    cal_d = pd.DataFrame({'fraction': xnew, 'molecular_weight_kda': [calcfr(x) for x in xnew]})
+    cal_d.to_csv('cal_predicted.txt', sep='\t', index=False)
+    
+    # plt.figure(figsize=(6,5))
+
+    # # Plot experimental calibration points (MW in kDa, log10 scale)
+    # plt.scatter(fr, 10**mw/1000, color='blue', label='Calibration standards')
+
+    # # Plot fitted line (MW in kDa)
+    # plt.plot(xnew, cal_d['MW'], color='red', label=f'Linear fit (R²={lr.score(fr ,mw):.3f})')
+
+    # plt.yscale('log')  # SEC calibration is log-linear
+    # plt.xlabel('Fraction number')
+    # plt.ylabel('Molecular weight (kDa)')
+    # plt.title('SEC Calibration Curve')
+    # plt.legend()
+    # plt.tight_layout()
+    # plt.show()
+
+    return dict(zip(cal_d['fraction'], cal_d['molecular_weight_kda']))
 
 
-def runner(tmp_, ids, cal, mw, fdr, mode):
+def runner(tmp_, ids, cal, mw, fdr, mode, mrg):
     """
     read folder tmp in directory.
     then loop for each file and create a combined file which contains all files
@@ -604,10 +618,15 @@ def runner(tmp_, ids, cal, mw, fdr, mode):
             cal=cal,
         )
         if mw != "None":
-            mw = pd.read_csv(mw, sep="\t")
-            mw = dict(zip(list(mw["Gene names"]), list(tmp["Mass"])))
-            exp.add_mw(mw)
+            mw_df = pd.read_csv(mw, sep="\t")
+            mw_df['Gene Names'] = mw_df['Gene Names'].str.split(' ')
+            mw_df = mw_df.explode('Gene Names')
+            mw_df = dict(zip(list(mw_df["Gene Names"]), list(mw_df["Mass"].astype(int))))
+            exp.add_mw(mw_df)
         exp.complex_centric_combine()
+        if mrg != 'all':
+            # skip fdr
+            fdr = -1
         exp.calc_fdr(fdr)
         exp.collapse_hypo(mode=mode)
         exp.peaks_inte_combine()

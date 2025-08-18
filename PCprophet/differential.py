@@ -489,12 +489,6 @@ def create_complex_report(comb_df, stoic_df, sid_df, outfile):
 
     # drop single protein now
     comb_df = comb_df[comb_df["rf_probability"] != -1]
-    cal = None
-    try:
-        cal = pd.read_csv("./cal.txt", sep="\t")
-        cal = dict(zip([str(round(x)) for x in list(cal["FR"])], cal["MW"]))
-    except Exception:
-        print("Calibration not provided\nThe MW will not be estimated")
     comb_df = comb_df.drop(["peaks", "rescaled_int", "raw_int", "member"], axis=1)
     # comb_df has exploded all proteins so rows are duplicated.
     # while most things are the same (GO scores, etc) the problem is that the
@@ -503,7 +497,6 @@ def create_complex_report(comb_df, stoic_df, sid_df, outfile):
     com = comb_df.groupby(["complex_id", "condition", "replicate"], as_index=False).head(1)
     mrg = pd.merge(stoic_df, com, on=["complex_id", "condition"])
     mrg["is_complex"] = np.where(mrg["rf_probability"] >= 0.5, "positive", "negative")
-
 
     # convert the fraction sel to the new one
     fr = dict(zip(sid_df["cond"], sid_df["fr"]))
@@ -517,11 +510,19 @@ def create_complex_report(comb_df, stoic_df, sid_df, outfile):
     mrg["in_database"] = search
     ids = dict(zip(sid_df["cond"], sid_df["short_id"]))
     
-    if cal:
-        mrg["molecular_weight"] = mrg["selected_peak"]
-        mrg.replace({"molecular_weight": cal}, inplace=True)
+    cal = pd.DataFrame()
+    try:
+        cal = pd.read_csv("cal_predicted.txt", sep="\t")
+    except Exception:
+        print("Calibration not provided\nThe MW will not be estimated")
+
+    if len(cal)>0:
+        cal['fraction'] = cal['fraction'].astype(int)
+        mrg['selected_peak'] = mrg['selected_peak'].astype(int)
+        cal = dict(zip(cal['fraction'], cal['molecular_weight_kda']))
+        mrg['molecular_weight'] = mrg['selected_peak'].replace(cal)
     else:
-        mrg["molecular_weight"] = "0"
+        mrg["molecular_weight"] = 0
     
     mrg.rename(columns={"member": "members", 'ratio':'stoichiometry'}, inplace=True)
     mrg["sample_id"] = mrg["condition"].map(ids)
@@ -537,7 +538,6 @@ def create_complex_report(comb_df, stoic_df, sid_df, outfile):
         """
         receive list of GN and converts them back to the gn ontology name
         """
-        # cc, mf, bp = set(), set(), set()
         nm = {"CC": set(), "MF": set(), "BP": set()}
         for g in gn.split(":"):
             for onto in gaf[g]:
