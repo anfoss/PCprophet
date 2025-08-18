@@ -195,8 +195,8 @@ def preprocessing(infile, config):
         tsp_go=config['GLOBAL']['sp_go'],
         model=config['GLOBAL']['rf']
     )
-    assert False
     return True
+
 
 def main():
     config = create_config()

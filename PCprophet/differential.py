@@ -480,7 +480,6 @@ def extract_inte(df, q=72, norm=True, split_cmplx=False):
     return df, vals
 
 
-
 def create_complex_report(comb_df, stoic_df, sid_df, outfile):
     def rescale_fr(x, fr):
         try:
@@ -737,6 +736,7 @@ def differential_fc(comb_df, sid_df):
     prot_df = pd.melt(prot_df.reset_index(), id_vars=['protein_id', 'gene_name'], var_name='cond_repl', value_name='value')
     prot_df = prot_df.reset_index()
     prot_df[['cond', 'repl']] = prot_df['cond_repl'].str.split('$', expand=True)
+    ### this guarantees every protein gets a fold change
     prot_df['value'] = subnan(prot_df['value'])
 
     ### need to be changed to extract pk
@@ -831,7 +831,6 @@ def differential_dotp(comb_df, sid_df):
         if ctrl.empty or treat.empty:
            return pd.DataFrame({'dotp': pd.Series(dtype='float64'),
                      'condition': pd.Series(dtype='object')})
-
 
         ctrl_dict = {
             rep: np.asarray(vals, dtype=np.float64)
