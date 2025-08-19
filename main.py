@@ -215,15 +215,15 @@ def main():
 
     if config['GLOBAL']['skip'] == 'False':
         [preprocessing(infile, config) for infile in files]
-    # collapse.runner(
-    #     tmp_=config['GLOBAL']['temp'],
-    #     ids=config['GLOBAL']['sid'],
-    #     cal=config['GLOBAL']['cal'],
-    #     mw=config['GLOBAL']['mw'],
-    #     fdr=config['POSTPROCESS']['fdr'],
-    #     mode=config['POSTPROCESS']['collapse_mode'],
-    #     mrg=config['PREPROCESS']['merge']
-    # )
+    collapse.runner(
+        tmp_=config['GLOBAL']['temp'],
+        ids=config['GLOBAL']['sid'],
+        cal=config['GLOBAL']['cal'],
+        mw=config['GLOBAL']['mw'],
+        fdr=config['POSTPROCESS']['fdr'],
+        mode=config['POSTPROCESS']['collapse_mode'],
+        mrg=config['PREPROCESS']['merge']
+    )
     combined_file = os.path.join(config['GLOBAL']['temp'], 'combined.txt')
     differential.runner(
         combined_file,

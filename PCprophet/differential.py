@@ -567,7 +567,11 @@ def create_complex_report(comb_df, stoic_df, sid_df, outfile):
     
     ### if the complex is reported we 0 the FDR as thiis is not needed
     mrg["fdr"] = np.where(mrg["in_database"] == "reported", 0, mrg["fdr"])
-    
+    mrg["is_subcomplex_of"] = mrg.apply(
+        lambda row: '' if row["is_subcomplex_of"] == row["complex_id"] else row["is_subcomplex_of"],
+        axis=1
+    )
+
     mrg.to_csv(outfile, index=False)
     return mrg
 
