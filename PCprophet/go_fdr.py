@@ -2,85 +2,46 @@ import re
 import numpy as np
 import pandas as pd
 import networkx as nx
-import random as random
-from sklearn.mixture import GaussianMixture
 import itertools
-
-import PCprophet.io_ as io
+from collections import namedtuple
+from sklearn.mixture import GaussianMixture
 
 
 def db2ppi(list_sep):
     """
-    read dbfile and convert complexes to ppi for faster quering
+    Read db complexes and convert to PPI graph for faster querying.
     """
     ppi_db = nx.Graph()
     for members in list_sep:
         for pairs in itertools.combinations(members.split("#"), 2):
             ppi_db.add_edge(str.upper(pairs[0]), str.upper(pairs[1]))
-    ppi_db.remove_edges_from(nx.selfloop_edges(ppi_db, keys=True))
+    ppi_db.remove_edges_from(nx.selfloop_edges(ppi_db))
     return ppi_db
-
-
-def get_fdr(tp, fp, tn, fn):
-    if fp == 0:
-        return 0
-    return fp / (tp + fp)
 
 
 def overlap_net(ppi_network, mb, over=0.5):
     """
-    calculates the overlap between a network and a list
+    Calculates overlap between a PPI network and a complex (list of proteins).
+    Returns True if >=over fraction of pairs are present in network.
     """
-    match, nomatch = 0, 0
     mb = re.split(r"#", mb)
     if len(mb) < 2:
         return True
+    match, nomatch = 0, 0
     for pairs in itertools.combinations(mb, 2):
         if ppi_network.has_edge(pairs[0], pairs[1]):
             match += 1
         else:
             nomatch += 1
-    if match / (nomatch + match) >= over:
-        return True
-    else:
-        return False
-
-# TODO change to probability based fdr
-def calc_fdr(combined, db, go_thresh):
-    """
-    calculate confusion matrix from test and db
-    db is a networkX object
-    """
-    test = dict(zip(list(combined["TOTS"]), list(combined["members"])))
-    isindb = {k: overlap_net(db, v) for k, v in test.items()}
-    est_fdr = []
-    conf_m = []
-    for go_score in go_thresh:
-        tp, fp, tn, fn = 0, 0, 0, 0
-        for cm in test:
-            cm = float(cm)
-            if cm >= go_score and isindb[cm]:
-                tp += 1
-            elif cm >= go_score:
-                fp += 1
-            elif cm < go_score and isindb[cm]:
-                fn += 1
-            elif cm < go_score:
-                tn += 1
-        est_fdr.append(get_fdr(tp, fp, tn, fn))
-        conf_m.append("\t".join(map(str, [tp, fp, tn, fn])))
-    return est_fdr, conf_m
+    return (match / (nomatch + match)) >= over
 
 
-def calc_pdf(decoy, target=None):
+def calc_pdf(decoy):
     """
-    calculate empirical fdr if not enough db hits are present
-    use gaussian mixture model 2 components to predict class probability
-    Then from the two distributions estimated fdr from pep
+    Fit 2-component Gaussian Mixture to decoy scores.
+    Used for fallback FDR estimation when not enough db hits are present.
     """
     X = decoy.reshape(-1, 1)
-    #  label = ["d"] * decoy.shape[0] + ["t"] * target.shape[0]
-    # label = np.array(label).reshape(-1, 1)
     clf = GaussianMixture(
         n_components=2,
         covariance_type="full",
@@ -88,16 +49,15 @@ def calc_pdf(decoy, target=None):
         max_iter=1000,
         random_state=42,
     )
-    print(X.shape)
     pred_ = clf.fit(X).predict(X.reshape(-1, 1)).reshape(-1, 1)
     return np.hstack((X, pred_))
 
 
 def split_posterior(X):
     """
-    split classes into tp and fp based on class label after gmm fit
+    Split classes into TP-like and FP-like distributions after GMM fit.
+    Ensure TP is the higher-scoring distribution.
     """
-    # force to have tp as max gmm moves label around
     d0 = X[X[:, 1] == 0][:, 0]
     d1 = X[X[:, 1] == 1][:, 0]
     if np.max(d0) > np.max(d1):
@@ -108,102 +68,134 @@ def split_posterior(X):
 
 def fdr_from_pep(tp, fp, target_fdr=0.5):
     """
-    estimate fdr from array generated in calc_pdf
-    returns estimated fdr at each point of TP and also the go cutoff
-    fdr is nr of fp > point / p > point
+    Estimate FDR from TP and FP distributions.
+    FDR(p) = #FP >= p / (#FP >= p + #TP >= p)
     """
-
     def fdr_point(p, fp, tp):
         fps = fp[fp >= p].shape[0]
         tps = tp[tp >= p].shape[0]
-        return fps / (fps + tps)
+        return fps / (fps + tps) if (fps + tps) else 1.0
 
     roll_fdr = np.vectorize(lambda p: fdr_point(p, fp, tp))
     fdr = roll_fdr(fp)
-    return fdr, np.percentile(fp, target_fdr * 100)
+    cutoff = np.percentile(fp, target_fdr * 100)
+    return fdr, cutoff
 
 
-def estimate_cutoff(fdr_arr, thresh, target_fdr=0.5):
+def assign_fdr_to_complexes(complexes, db, target_fdr):
     """
-    estimate corum cutoff for target FDR
-    use the lowest percentage of corum for reaching target fdr
+    Assign cumulative monotonic FDR to complexes based on GO score.
+    
+    complexes: pd.DataFrame with columns ['protein_id', score_col, 'members']
+               - 'members' must be iterable (list of proteins)
+    db: networkX reference network (e.g., CORUM or GO-derived)
+    target_fdr: if provided, filter complexes at this cutoff
     """
-    fdr2thresh = dict(zip(fdr_arr, thresh))
-    fdr_min = min([abs(x - target_fdr) for x in fdr_arr])
-    idx = [abs(x - target_fdr) for x in fdr_arr].index(fdr_min)
-    return fdr2thresh[fdr_arr[idx]], fdr_arr[idx]
+    # mark if in reference db
+    complexes["in_db"] = complexes["members"].apply(lambda m: overlap_net(db, m))
+
+    # sort by score (high → low)
+    complexes = complexes.sort_values('TOTS', ascending=False, ignore_index=False)
+
+
+    # cumulative TP/FP counts
+    complexes["tp_cum"] = complexes["in_db"].cumsum()
+    complexes["fp_cum"] = (~complexes["in_db"]).cumsum()
+
+    # raw cumulative FDR
+    complexes["fdr_raw"] = complexes["fp_cum"] / (complexes["tp_cum"] + complexes["fp_cum"])
+
+    # enforce monotonic non-decreasing FDR
+    complexes["fdr"] = np.minimum.accumulate(complexes["fdr_raw"][::-1])[::-1]
+
+    # if filtering at target_fdr
+    if target_fdr is not None:
+        selected = complexes[complexes["fdr"] <= target_fdr].copy()
+    else:
+        selected = complexes
+
+    return complexes, selected
+
 
 
 def filter_hypo(combined, go_cutoff):
     """
-    return object for collapse py
+    Filter out hypotheses below the GO cutoff.
     """
-    print(f"Number of positive complex hypotheses before filtering: {combined[combined['reported']!=1].shape[0]}")
+    before = combined[combined['reported'] != 1].shape[0]
     mask = (combined["reported"] != 1) & (combined["TOTS"] < go_cutoff)
     filt = combined.drop(combined[mask].index)
-    print(f"Number of positive complex hypotheses after filtering: {filt[filt['reported']!=1].shape[0]}")
+    after = filt[filt['reported'] != 1].shape[0]
+    print(f"Number of positive complex hypotheses before filtering: {before}")
+    print(f"Number of positive complex hypotheses after filtering: {after}")
     return filt
 
 
 def eval_complexes(cmplx):
     """
-    return appropriate split from database
-    use either all positive if more than 50 else use all db
-    return None otherwise
+    Decide which db complexes to use for FDR estimation.
+    Use positives if >50, else all reported.
     """
     if cmplx[(cmplx["is_complex"] == "Yes") & (cmplx["reported"] == 1)].shape[0] > 50:
-        # return only positive database
         return cmplx[(cmplx["is_complex"] == "Yes") & (cmplx["reported"] == 1)]
-        #  use all complexes
     elif cmplx[cmplx["reported"] == 1].shape[0] > 0:
         return cmplx[cmplx["reported"] == 1]
     else:
-        # empty so can quack
         return pd.DataFrame()
 
 
 def fdr_from_GO(cmplx_comb, target_fdr, fdrfile):
     """
-    use positive predicted annotated from db to estimate hypothesis fdr
+    Use db-annotated complexes to estimate FDR for hypotheses.
+    Returns:
+      - filtered complexes (above cutoff)
+      - FDR curve dataframe
+      - complexes dataframe with per-complex FDR
     """
     pos = cmplx_comb[cmplx_comb["is_complex"] == "Yes"]
-    # remove already here the hypothesis with 0 go
     hypo = pos[(pos["reported"] != 1) & (pos["TOTS"] > 0)]
-    db = cmplx_comb[cmplx_comb["reported"] == 1]
     db_use = eval_complexes(cmplx_comb)
-    io.create_file(fdrfile, ["fdr", "sumGO"])
-    if target_fdr > 0:
-        thresh = list(pos["TOTS"])
-        go_cutoff = 0
-        nm = list(hypo.index)
-        # if empty then GMM
-        if db_use.empty or np.all(np.array(thresh) == 0):
-            # we update nm here
+
+    if target_fdr > 0 and not hypo.empty:
+        if db_use.empty or np.all(hypo["TOTS"] == 0):
             print("Not enough reported complexes for FDR estimation, using GMM model")
-            # then we need to extract the go sum only
             go_hypo = hypo["TOTS"].values
             if go_hypo.shape[0] > 0:
                 predicted = calc_pdf(go_hypo)
                 tp, fp = split_posterior(predicted)
-                thresh_fdr, go_cutoff = fdr_from_pep(
-                    tp=tp, fp=fp, target_fdr=target_fdr
-                )
+                fdr_values, cutoff = fdr_from_pep(tp=tp, fp=fp, target_fdr=target_fdr)
+
+                # build output dataframe
+                df_out = pd.DataFrame({
+                    "score": fp,
+                    "fdr": fdr_values,
+                    "tp": [np.nan] * len(fp),
+                    "fp": [np.nan] * len(fp)
+                })
+                df_out.to_csv(fdrfile, sep="\t", index=False)
+                go_cutoff = cutoff
             else:
-                print(
-                    "The GO term mapping went wrong. Double check the README to ensure correct input files\nFDR control will not be performed"
-                )
-                return filter_hypo(cmplx_comb, 0), zip([0], [0], [0])
+                print("GO term mapping failed. No FDR control performed.")
+                return filter_hypo(cmplx_comb, 0), pd.DataFrame(), cmplx_comb
         else:
+            # use cumulative FDR assignment
             ppi_db = db2ppi(db_use["members"])
-            thresh_fdr, conf_m = calc_fdr(hypo, ppi_db, thresh)
-            go_cutoff, fdr_reach = estimate_cutoff(thresh_fdr, thresh, target_fdr)
-            io.create_file(fdrfile + ".conf_m", ["tp" "fp" "tn" "fn"])
-            for pairs in zip(conf_m, thresh):
-                io.dump_file(fdrfile + ".conf_m", "\t".join(map(str, pairs)))
-        for pairs in zip(thresh_fdr, thresh):
-            io.dump_file(fdrfile, "\t".join(map(str, pairs)))
-        print("Estimated GO cutoff to reach {} FDR is {}".format(target_fdr, go_cutoff))
-        return filter_hypo(cmplx_comb, go_cutoff), zip(thresh_fdr, thresh, nm)
+            complexes_with_fdr, selected = assign_fdr_to_complexes(
+                cmplx_comb, ppi_db, target_fdr=target_fdr
+            )
+
+            # FDR curve: unique (score, fdr) pairs, descending score
+            df_out = complexes_with_fdr[["TOTS", "fdr"]].drop_duplicates().sort_values("TOTS", ascending=False)
+            df_out.rename(columns={"TOTS": "score"}, inplace=True)
+            df_out.to_csv(fdrfile, sep="\t", index=False)
+
+            go_cutoff = selected["TOTS"].min() if not selected.empty else 0
+
+        # filter complexes by cutoff
+        filtered = filter_hypo(cmplx_comb, go_cutoff)
+
+        return filtered, df_out, complexes_with_fdr
     else:
         print("No FDR control performed")
-        return filter_hypo(cmplx_comb, 0), zip([0], [0], [0])
+        cmplx_comb["fdr"] = 0
+        return filter_hypo(cmplx_comb, 0), pd.DataFrame(), cmplx_comb

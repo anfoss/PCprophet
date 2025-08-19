@@ -520,6 +520,7 @@ def runner(base, go_obo, tsp_go, model):
         "rf_probability": prob[:, 1],
         "is_complex": np.where(pred == 1, "Yes", "No")
     })[["complex_id", "rf_probability", "is_complex"]]
+    print("Number of predicted complexes:", (df["is_complex"] == "Yes").sum())
     df.to_csv(os.path.join(base, "rf.txt"), sep="\t", index=False)
  
     return True

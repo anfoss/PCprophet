@@ -540,7 +540,7 @@ def create_complex_report(comb_df, stoic_df, sid_df, outfile):
         """
         nm = {"CC": set(), "MF": set(), "BP": set()}
         for g in gn.split(":"):
-            for onto in gaf[g]:
+            for onto in gaf.get(g, ''):
                 if onto in ["CC", "MF", "BP"]:
                     {nm[onto].add(x) for x in gaf[g][onto]}
         cc = ";".join([id2name.get(x, x) for x in nm["CC"] if "GO" in x])
@@ -564,6 +564,10 @@ def create_complex_report(comb_df, stoic_df, sid_df, outfile):
     mrg["shared_go_cellular_component"] = cc
     mrg["shared_go_biological_process"] = bp
     mrg["shared_go_molecular_function"] = mf
+    
+    ### if the complex is reported we 0 the FDR as thiis is not needed
+    mrg["fdr"] = np.where(mrg["in_database"] == "reported", 0, mrg["fdr"])
+    
     mrg.to_csv(outfile, index=False)
     return mrg
 
@@ -944,7 +948,7 @@ def runner(infile, sample_ids, outf, temp, dif):
         os.makedirs(outf)
         
     # stoichiometry calculation    
-    comb = pd.read_csv(infile, sep="\t")
+    comb = pd.read_csv(infile, sep="\t", low_memory=False)
     # remove single protein
     comb = comb[comb["rf_probability"] != -1]
     stoic_df = stoichiometry(comb, q=3)

@@ -300,27 +300,21 @@ class ProphetExperiment(object):
     
     def collapse_ecal(self, totest):
         pass
-
+    
+    
     def calc_fdr(self, target_fdr):
         """
         calculate fdr from GO and add FDR to each complex
         """
         fdrfile = os.path.join(self.base, "fdr.txt")
-        hyp, fdr = go_fdr.fdr_from_GO(
-            cmplx_comb=self.complex_c, target_fdr=float(target_fdr), fdrfile=fdrfile
+        hyp, fdr_curve, cmplx_with_fdr = go_fdr.fdr_from_GO(
+            cmplx_comb=self.complex_c, 
+            target_fdr=float(target_fdr), 
+            fdrfile=fdrfile
         )
-
-        fdr = pd.DataFrame(list(fdr), columns=["fdr", "sumGO", "protein_id"])
-        fdr.set_index("protein_id", inplace=True)
-        self.fdr = fdr
-        self.complex_c = pd.merge(
-            hyp,
-            self.fdr.drop(["sumGO"], axis=1),
-            how="outer",
-            left_index=True,
-            right_index=True,
-        )
-        self.complex_c.fillna({'fdr':0}, inplace=True)
+        self.fdr = fdr_curve
+        self.complex_c = cmplx_with_fdr.drop(['tp_cum', 'fp_cum', 'fdr_raw'], axis=1)        
+        self.complex_c.fillna({'fdr': 0}, inplace=True)
 
     def add_single_prot(self, cols):
         """
