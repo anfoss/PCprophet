@@ -168,7 +168,10 @@ training_data
 *.tsv
 *.csv
 gaf
-*.ipynb
 test/
 cal_predicted.txt
 cal_file.txt
+
+
+
+*.ipynb

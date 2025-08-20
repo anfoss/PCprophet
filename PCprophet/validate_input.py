@@ -1,12 +1,12 @@
+import re
 import PCprophet.exceptions as PCpexc
 import pandas as pd
 
 
 class InputTester(object):
     """
-    docstring for InputTester
     validate all inputs before anything
-    infile is a panda dataframe
+    infile is a pandas dataframe
     """
 
     def __init__(self, path, filetype, infile=None):
@@ -19,10 +19,6 @@ class InputTester(object):
         self.infile = pd.read_csv(self.path, sep="\t", index_col=False)
 
     def test_missing_col(self, col):
-        """
-        check columns in self
-        """
-        #  print(set(list(self.infile)))
         if not all([x in self.infile.columns for x in col]):
             raise PCpexc.MissingColumnError(self.path)
 
@@ -38,15 +34,37 @@ class InputTester(object):
             raise PCpexc.DuplicateIdentifierError(self.path)
 
     def test_all(self, *args):
-        """
-        performs all test
-        """
         self.test_missing_col(args[0])
         self.test_uniqueid(args[1])
 
     def test_na(self):
         if self.infile.isnull().values.any():
             raise PCpexc.NaInMatrixError(self.path)
+
+def test_cond_values(self):
+    """
+    Check that 'cond' column contains 'Ctrl' and sequential TreatN starting from 1.
+    """
+    cond_values = set(self.infile["cond"].unique())
+
+    # Must contain "Ctrl"
+    if "Ctrl" not in cond_values:
+        raise PCpexc.ConditionError(f"{self.path}: missing 'Ctrl' in cond column")
+
+    # Extract TreatN values
+    treat_pattern = re.compile(r"^Treat(\d+)$")
+    treat_nums = sorted(int(m.group(1)) for val in cond_values if (m := treat_pattern.match(val)))
+
+    if not treat_nums:
+        raise PCpexc.ConditionError(f"{self.path}: missing 'TreatN' (e.g. Treat1) in cond column")
+
+    # Check sequential order starting at 1
+    expected = list(range(1, max(treat_nums) + 1))
+    if treat_nums != expected:
+        raise PCpexc.ConditionError(
+            f"{self.path}: TreatN conditions must be sequential from Treat1 to Treat{max(expected)} "
+            f"(found: {', '.join(f'Treat{n}' for n in treat_nums)})"
+        )
 
     def test_file(self):
         self.read_infile()
@@ -55,6 +73,7 @@ class InputTester(object):
             unique = ["repl", "short_id"]
             self.test_all(col, unique)
             self.test_empty(col)
+            self.test_cond_values()  # <-- new check
         elif self.filetype == "db":
             try:
                 col = ["complex_id", "complex_name", "subunits_gene_name"]

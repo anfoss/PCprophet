@@ -961,7 +961,7 @@ def runner(infile, sample_ids, outf, temp, dif):
 
     
     sid_df = pd.read_csv(sample_ids, sep="\t")
-    comb_df = pd.read_csv(infile, sep="\t")
+    comb_df = pd.read_csv(infile, sep="\t", low_memory=False)
     cmplx_report_out = os.path.join(outf, "complex_report.csv")
     ppi_report_out = os.path.join(outf, "ppi_report.csv")
     print("Creating complex report and PPI report")

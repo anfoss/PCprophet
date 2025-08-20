@@ -41,3 +41,8 @@ class NaInMatrixError(Exception):
 class NotImplementedError(Exception):
     def __init___(self, dErrorArguments):
         Exception.__init__(self, "Not implemented error")
+
+class ConditionError(Exception):
+    def __init___(self, dErrorArguments):
+        Exception.__init__(self, "CondError {0}".format(dErrArguments))
+        self.dErrorArguments = dErrorArguements
