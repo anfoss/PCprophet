@@ -45,7 +45,6 @@ class Tee:
             self.logfile.flush()
 
 
-# TODO check os
 def get_os():
     return platform.system()
 
@@ -198,6 +197,40 @@ def preprocessing(infile, config):
     )
     return True
 
+def run_from_gui(config_dict):
+    """
+    Run the main pipeline from the GUI with a specified configuration file.
+    """
+    config = configparser.ConfigParser()
+    for section, params in config_dict.items():
+        config[section] = {k: str(v) for k, v in params.items()}
+    validate.InputTester(config['GLOBAL']['db'], 'db').test_file()
+    validate.InputTester(config['GLOBAL']['sid'], 'ids').test_file()
+    files = pd.read_csv(config['GLOBAL']['sid'], sep='\t')
+    files = [os.path.abspath(x) for x in files['Sample']]
+
+    if config['GLOBAL']['skip'] == 'False':
+        for infile in files:
+            preprocessing(infile, config)
+
+    collapse.runner(
+        tmp_=config['GLOBAL']['temp'],
+        ids=config['GLOBAL']['sid'],
+        cal=config['GLOBAL']['cal'],
+        mw=config['GLOBAL']['mw'],
+        fdr=config['POSTPROCESS']['fdr'],
+        mode=config['POSTPROCESS']['collapse_mode'],
+        mrg=config['PREPROCESS']['merge']
+    )
+    combined_file = os.path.join(config['GLOBAL']['temp'], 'combined.txt')
+    differential.runner(
+        combined_file,
+        config['GLOBAL']['sid'],
+        config['GLOBAL']['output'],
+        config['GLOBAL']['temp'],
+        config['GLOBAL']['diff'],
+    )
+
 
 def main():
     config = create_config()
@@ -214,7 +247,8 @@ def main():
     files = [os.path.abspath(x) for x in files['Sample']]
 
     if config['GLOBAL']['skip'] == 'False':
-        [preprocessing(infile, config) for infile in files]
+        for infile in files:
+            preprocessing(infile, config)
     collapse.runner(
         tmp_=config['GLOBAL']['temp'],
         ids=config['GLOBAL']['sid'],

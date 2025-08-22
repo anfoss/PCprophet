@@ -41,30 +41,28 @@ class InputTester(object):
         if self.infile.isnull().values.any():
             raise PCpexc.NaInMatrixError(self.path)
 
-def test_cond_values(self):
-    """
-    Check that 'cond' column contains 'Ctrl' and sequential TreatN starting from 1.
-    """
-    cond_values = set(self.infile["cond"].unique())
+    def test_cond_values(self):
+        """
+        Check that 'cond' column contains 'Ctrl' and sequential TreatN starting from 1.
+        """
+        cond_values = set(self.infile["cond"].unique())
 
-    # Must contain "Ctrl"
-    if "Ctrl" not in cond_values:
-        raise PCpexc.ConditionError(f"{self.path}: missing 'Ctrl' in cond column")
+        if "Ctrl" not in cond_values:
+            raise PCpexc.ConditionError(f"{self.path}: missing 'Ctrl' in cond column")
+        # Extract TreatN values
+        treat_pattern = re.compile(r"^Treat(\d+)$")
+        treat_nums = sorted(int(m.group(1)) for val in cond_values if (m := treat_pattern.match(val)))
 
-    # Extract TreatN values
-    treat_pattern = re.compile(r"^Treat(\d+)$")
-    treat_nums = sorted(int(m.group(1)) for val in cond_values if (m := treat_pattern.match(val)))
+        if not treat_nums:
+            raise PCpexc.ConditionError(f"{self.path}: missing 'TreatN' (e.g. Treat1) in cond column")
 
-    if not treat_nums:
-        raise PCpexc.ConditionError(f"{self.path}: missing 'TreatN' (e.g. Treat1) in cond column")
-
-    # Check sequential order starting at 1
-    expected = list(range(1, max(treat_nums) + 1))
-    if treat_nums != expected:
-        raise PCpexc.ConditionError(
-            f"{self.path}: TreatN conditions must be sequential from Treat1 to Treat{max(expected)} "
-            f"(found: {', '.join(f'Treat{n}' for n in treat_nums)})"
-        )
+        # Check sequential order starting at 1
+        expected = list(range(1, max(treat_nums) + 1))
+        if treat_nums != expected:
+            raise PCpexc.ConditionError(
+                f"{self.path}: TreatN conditions must be sequential from Treat1 to Treat{max(expected)} "
+                f"(found: {', '.join(f'Treat{n}' for n in treat_nums)})"
+            )
 
     def test_file(self):
         self.read_infile()
