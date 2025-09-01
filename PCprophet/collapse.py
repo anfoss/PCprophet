@@ -285,13 +285,30 @@ class ProphetExperiment(object):
 
     def collapse_mincal(self, totest):
         """
-        collapse to minimun error from calibration curve
+
+        Selects the protein group from the input DataFrame `totest` that has the minimum absolute error 
+        between its calculated molecular weight and the calibrated peak value.
+
+        The molecular weight for each protein group is calculated by summing the molecular weights 
+        of its members, using a default value of 50,000 Da for any missing proteins. The calibrated 
+        peak value is obtained by averaging the selected peaks for each protein in the calibration 
+        dataset and replacing them with calibration values. The function returns the index of the 
+        protein group with the minimum absolute difference between calculated and calibrated values.
+
+        Parameters
+        ----------
+        totest : pandas.DataFrame
+            DataFrame containing protein groups to test. Must have a 'members' column with 
+            protein identifiers separated by '#'.
+
+        Returns
+        -------
+        index
+            The index of the protein group in `totest` with the minimum absolute error.
         """
         ### if not available the mw is estimated at 50 Kda for every protein missing
         calc_mw = lambda x, mw: sum([mw.get(gn, 50000) for gn in x.split("#")])
         totest["w"] = totest["members"].apply(calc_mw, mw=self.mw)
-        print(totest.head(10))
-        assert False
         tmp = self.peaks[self.peaks["protein_id"].isin(totest.index)]
         tmp = tmp.groupby(["protein_id"]).mean().selected_peak.apply(np.round)
         tmp.replace(self.cal, inplace=True)
@@ -625,6 +642,7 @@ def runner(tmp_, ids, cal, mw, fdr, mode, mrg):
         exp.collapse_hypo(mode=mode)
         exp.peaks_inte_combine()
         allexps.add_exps(exp)
+    print("Combining all experiments")
     allexps.multi_collapse()
     allexps.combine_all()
     allexps.calc_subcomplexes()

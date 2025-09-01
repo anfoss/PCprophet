@@ -6,6 +6,8 @@ import sys
 import os
 import configparser
 import main 
+import subprocess
+
 
 class SettingsPanel(ttk.LabelFrame):
     def __init__(self, parent):
@@ -294,11 +296,31 @@ class PCprophetGUI(tk.Tk):
             self.tree.insert("", "end", values=values)
         self.update_stdout(f"Loaded design file: {file_path}")
 
-    # --- Run ---
+
     def run_pipeline(self):
         config_dict = self.settings_panel.get_config_dict()
-        main.run_from_gui(config_dict)
-        self.update_stdout("Pipeline run finished.")
+        args = config_to_args(config_dict)
+        cmd = ["python3", "main.py"] + args
+        print(f"Running command: {' '.join(cmd)}")
+        proc = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1
+            )
+
+        def poll_output():
+            line = proc.stdout.readline()
+            if line:
+                text_widget.insert(tk.END, line)
+                text_widget.see(tk.END)
+                text_widget.update_idletasks()
+            if proc.poll() is None:
+                text_widget.after(100, poll_output)
+
+        poll_output()
+
 
     # --- Logs ---
     def update_stdout(self, msg=None):
@@ -307,6 +329,23 @@ class PCprophetGUI(tk.Tk):
             sys.stdout.flush()
         self.stdout_text.delete(1.0, tk.END)
         self.stdout_text.insert(tk.END, self.stdout.getvalue())
+
+
+def config_to_args(config_dict):
+    """
+    Convert nested config dict to a flat list of CLI args.
+    Example: {"GLOBAL": {"sid": "sample.txt", "db": "db.txt"}}
+    → ["-sid", "sample.txt", "-db", "db.txt"]
+    """
+    args = []
+    for section, options in config_dict.items():
+        for key, value in options.items():
+            if value is None or value == "":
+                continue
+            args.append(f"-{key}")
+            args.append(str(value))
+    return args
+
 
 
 if __name__ == "__main__":
