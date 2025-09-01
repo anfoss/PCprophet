@@ -208,16 +208,27 @@ class ProphetExperiment(object):
         db_pos = db_pos[db_pos["is_complex"] == "Yes"]
         #  calc mean per complex
         # try with highest completness
-        db_pos = db_pos[db_pos["completeness"] > 0.75]
-        peaks2cmplx = self.peaks.groupby("protein_id").median().round()
-        db_pos["sub"] = db_pos["members"].apply(lambda x: len(x.split("#")))
-        cm = pd.merge(peaks2cmplx, db_pos, on=["protein_id"])
-        y, x = cm["sub"].values, cm["selected_peak"].values
-        z = np.polyfit(x, y, 2)
-        p = np.poly1d(z)
-        # peak_dic = dict(zip(list(peaks2cmplx.index), list(peaks2cmplx["selected_peak"])))
-        theor = {k: p(k) for k in list(range(1, 73))}
-        return theor, peaks2cmplx["selected_peak"]
+        db_pos = db_pos[db_pos["completeness"] > 0.5]
+        peaks2cmplx = self.peaks.groupby("complex_id")['selected_peak'].median().round()
+        if peaks2cmplx.empty:
+            print("No peaks found for database positive complexes. eCAL collapsing cannot be performed.")
+            return {}, pd.Series()
+        db_pos["subunits"] = db_pos["members"].apply(lambda x: len(x.split("#")))
+        db_pos["subunits"] = np.ceil(db_pos["subunits"] / db_pos["completeness"]).astype(int)
+        cm = db_pos.merge(peaks2cmplx, left_on="complex_id", right_index=True, how="inner")
+        y, x = cm["subunits"].values, cm["selected_peak"].values
+        x = cm["selected_peak"].to_numpy(dtype=float)
+        y = cm["subunits"].to_numpy(dtype=float)
+
+        # linear fit to enforce the negative trend assumption
+        b1, b0 = np.polyfit(x, y, 1)  # y = b1*x + b0
+
+        if b1 >= 0:
+            print("Warning: fitted slope is non-negative.")
+
+        pred = lambda k: max(1, int(np.rint(b1 * k + b0)))
+        fr_to_sub = {k: pred(k) for k in range(1, 72 + 1)}        
+        return fr_to_sub
 
 
     ## need to be refactored
@@ -233,11 +244,11 @@ class ProphetExperiment(object):
         print("Collapsing complexes using mode: {}".format(mode))
         rm = []
         # better to get db positive here
-        lr, peaks = None, None
+        ecal_sub = None
         if mode == "eCAL":
-            lr, peaks = self.interpolate_fract()
+            ecal_sub = self.interpolate_fract()
         for test in hypo.index.values:
-            try:
+            try: 
                 tokeep = np.nan
                 tomerge = nx.node_connected_component(simil_graph, test)
                 simil_graph.remove_nodes_from(tomerge)
@@ -251,17 +262,17 @@ class ProphetExperiment(object):
                 elif mode == "PROB":
                     tokeep = self.collapse_prob(totest)
                 elif mode == "eCAL":
-                    raise NotImplementedError
+                    tokeep = self.collapse_ecal(totest, ecal_sub)
                 elif mode == "NONE":
                     tokeep = totest.index
                 # idxs to remove
                 tm = np.setdiff1d(np.array(totest.index), np.array(tokeep))
                 rm.extend(list(tm))
-            except KeyError as e:
-                # this is always gonna happen because we remove in place
+            except KeyError:
+                # remove inplace faster to catch than test has_node
                 pass
         self.complex_c.drop(index=rm, inplace=True)
-        # print("Removed {} overlapping complexes".format(len(rm)))
+        print("Removed {} overlapping complexes".format(len(rm)))
         print("Number of complexes after collapsing: {}".format(self.complex_c.index.nunique()))
 
     def collapse_largest(self, totest):
@@ -308,15 +319,26 @@ class ProphetExperiment(object):
         """
         ### if not available the mw is estimated at 50 Kda for every protein missing
         calc_mw = lambda x, mw: sum([mw.get(gn, 50000) for gn in x.split("#")])
-        totest["w"] = totest["members"].apply(calc_mw, mw=self.mw)
-        tmp = self.peaks[self.peaks["protein_id"].isin(totest.index)]
-        tmp = tmp.groupby(["protein_id"]).mean().selected_peak.apply(np.round)
-        tmp.replace(self.cal, inplace=True)
-        diff = (totest["w"] - tmp).abs()
+        totest["mw_da"] = totest["members"].apply(calc_mw, mw=self.mw)
+        totest["mw_kda"] = totest["mw_da"] / 1000
+        theor = self.peaks[self.peaks["complex_id"].isin(totest.index)]
+        theor = theor.groupby(["complex_id"])['selected_peak'].median().to_frame()
+        theor['selected_peak'] = theor['selected_peak'].astype(int)
+        theor.replace(self.cal, inplace=True)
+        diff = (totest["mw_kda"] - theor["selected_peak"]).abs()
         return diff.idxmin()
     
-    def collapse_ecal(self, totest):
-        pass
+    def collapse_ecal(self, totest, ecal_sub):
+        """
+        select complex with minimum error to the expected number of subunits
+        """
+        totest["subunits"] = totest["members"].apply(lambda x: len(x.split("#")))
+        theor = self.peaks[self.peaks["complex_id"].isin(totest.index)]
+        theor = theor.groupby(["complex_id"])['selected_peak'].median().to_frame()
+        theor['selected_peak'] = theor['selected_peak'].astype(int)
+        theor.replace(ecal_sub, inplace=True)
+        diff = (totest["subunits"] - theor["selected_peak"]).abs()
+        return diff.idxmin()
     
     
     def calc_fdr(self, target_fdr):

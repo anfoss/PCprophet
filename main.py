@@ -126,7 +126,7 @@ def create_config():
     parser.add_argument(
         '-co',
         help='collapse mode',
-        choices=['GO', 'CAL', 'SUPER', 'PROB', 'NONE'],
+        choices=['GO', 'CAL', 'SUPER', 'PROB', 'NONE', 'eCAL'],
         dest='collapse',
         default='GO',
         action='store',

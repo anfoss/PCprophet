@@ -131,6 +131,8 @@ If a PPI is used (`-is_ppi True`), PCprophet clusters it using MCL and assigns I
 | `PROB` | Keep complex with highest prediction probability |
 | `SUPER`| Keep superset (most members) |
 | `CAL`  | Match to MW using calibration file and uniprot data |
+| `eCAL`  | Fit fraction number to number of subunits. A good proxy if there are complexes in the whole MW range and no calibration is available |
+
 | `NONE` | Keep all |
 
 > **Recommendation:** Use `CAL` only if you have a full calibration curve covering the MW range. Otherwise, use `GO`.
