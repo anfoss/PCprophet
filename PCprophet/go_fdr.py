@@ -126,6 +126,7 @@ def filter_hypo(combined, go_cutoff):
     mask = (combined["reported"] != 1) & (combined["TOTS"] < go_cutoff)
     filt = combined.drop(combined[mask].index)
     after = filt[filt['reported'] != 1].shape[0]
+    print(go_cutoff)
     print(f"Number of positive complex hypotheses before filtering: {before}")
     print(f"Number of positive complex hypotheses after filtering: {after}")
     return filt
@@ -152,10 +153,22 @@ def fdr_from_GO(cmplx_comb, target_fdr, fdrfile):
       - FDR curve dataframe
       - complexes dataframe with per-complex FDR
     """
+    def _with_stub_cols(df, fdr_value=0.0):
+        df = df.copy()
+        # ensure helper columns and fdr exist
+        for col in ["tp_cum", "fp_cum", "fdr_raw"]:
+            if col not in df.columns:
+                df[col] = 0
+        if "fdr" not in df.columns:
+            df["fdr"] = fdr_value
+        else:
+            df["fdr"] = df["fdr"].fillna(fdr_value)
+        return df
+    
+    
     pos = cmplx_comb[cmplx_comb["is_complex"] == "Yes"]
     hypo = pos[(pos["reported"] != 1) & (pos["TOTS"] > 0)]
     db_use = eval_complexes(cmplx_comb)
-
     if target_fdr > 0 and not hypo.empty:
         if db_use.empty or np.all(hypo["TOTS"] == 0):
             print("Not enough reported complexes for FDR estimation, using GMM model")
@@ -184,7 +197,6 @@ def fdr_from_GO(cmplx_comb, target_fdr, fdrfile):
                 cmplx_comb, ppi_db, target_fdr=target_fdr
             )
 
-            # FDR curve: unique (score, fdr) pairs, descending score
             df_out = complexes_with_fdr[["TOTS", "fdr"]].drop_duplicates().sort_values("TOTS", ascending=False)
             df_out.rename(columns={"TOTS": "score"}, inplace=True)
             df_out.to_csv(fdrfile, sep="\t", index=False)
@@ -192,8 +204,11 @@ def fdr_from_GO(cmplx_comb, target_fdr, fdrfile):
             go_cutoff = selected["TOTS"].min() if not selected.empty else 0
 
         # filter complexes by cutoff
-        filtered = filter_hypo(cmplx_comb, go_cutoff)
+        complexes_with_fdr = complexes_with_fdr.drop(
+            columns=["tp_cum", "fp_cum", "fdr_raw"], errors="ignore"
+        )
 
+        filtered = filter_hypo(cmplx_comb, go_cutoff)
         return filtered, df_out, complexes_with_fdr
     else:
         print("No FDR control performed")

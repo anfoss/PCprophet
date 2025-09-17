@@ -281,7 +281,6 @@ def runner(infile, db, is_ppi, hypothesis):
     prot_norm = prot.apply(lambda row: center_row(row.values, stretch=(True, 72)), axis=1)
     prot_norm = prot_norm.dropna()
     prot_norm = prot_norm.apply(pd.Series)
-
     prot_norm.index.name = "protein_id"
     # create tmp folder and subfolder with name
     # write transf matrix    

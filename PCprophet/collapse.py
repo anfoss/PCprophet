@@ -352,7 +352,7 @@ class ProphetExperiment(object):
             fdrfile=fdrfile
         )
         self.fdr = fdr_curve
-        self.complex_c = cmplx_with_fdr.drop(['tp_cum', 'fp_cum', 'fdr_raw'], axis=1)        
+        self.complex_c = cmplx_with_fdr
         self.complex_c.fillna({'fdr': 0}, inplace=True)
 
     def add_single_prot(self, cols):
