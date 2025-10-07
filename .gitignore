@@ -171,7 +171,8 @@ gaf
 test/
 cal_predicted.txt
 cal_file.txt
-
-
-
+protein_level/
+*.pdf
+PCprophet/process_peptides_single.py
 *.ipynb
+gui.py

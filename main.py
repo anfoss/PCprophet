@@ -15,6 +15,7 @@ from PCprophet import collapse as collapse
 from PCprophet import features_and_prediction as features_and_prediction
 from PCprophet import differential as differential
 from PCprophet import generate_complexes as generate_complexes
+# from PCprophet import process_peptides as process_peptides
 
 from PCprophet import validate_input as validate
 
@@ -107,7 +108,7 @@ def create_config():
         default='all',
     )
     parser.add_argument(
-        '-ma',
+        '-use',
         help='merge using all complexes or reference only',
         dest='merge',
         action='store',
@@ -115,11 +116,18 @@ def create_config():
         default='all',
     )
     parser.add_argument(
+        '-is_pep',
+        help='peptide level data analysis',
+        dest='peptide',
+        action='store',
+        choices=['True', 'False'],
+        default='False',
+    )
+    parser.add_argument(
         '-fdr',
         help='false discovery rate for novel complexes',
         dest='fdr',
         action='store',
-        # change to cumulative monotonic FDR
         default=0.7,
         type=float,
     )
@@ -165,6 +173,7 @@ def create_config():
         'mw': args.mwuni,
         'temp': r'./tmp',
         'skip': args.skip,
+        'is_pep': args.peptide,
         'diff': args.dif
     }
     config['PREPROCESS'] = {
@@ -180,7 +189,7 @@ def create_config():
 
 
 def preprocessing(infile, config):
-    #validate.InputTester(infile, 'in').test_file()
+    validate.InputTester(infile, 'in').test_file()
     generate_complexes.runner(
         infile=infile,
         db=config['GLOBAL']['db'],
@@ -196,6 +205,7 @@ def preprocessing(infile, config):
         model=config['GLOBAL']['rf']
     )
     return True
+
 
 def run_from_gui(config_dict):
     """
@@ -243,12 +253,21 @@ def main():
 
     validate.InputTester(config['GLOBAL']['db'], 'db').test_file()
     validate.InputTester(config['GLOBAL']['sid'], 'ids').test_file()
+
+    # if config['GLOBAL']['is_pep']=='True' and config['GLOBAL']['skip'] == 'False':
+    #     print('Processing peptide level data to protein level data')
+    #     process_peptides.runner(config['GLOBAL']['sid'])
+    #     # override sid to new one
+    #     config['GLOBAL']['sid'] = "protein_level_sample_ids.tsv"
+
+
     files = pd.read_csv(config['GLOBAL']['sid'], sep='\t')
     files = [os.path.abspath(x) for x in files['Sample']]
 
     if config['GLOBAL']['skip'] == 'False':
         for infile in files:
             preprocessing(infile, config)
+    
     collapse.runner(
         tmp_=config['GLOBAL']['temp'],
         ids=config['GLOBAL']['sid'],

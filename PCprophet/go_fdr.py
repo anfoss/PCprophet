@@ -126,7 +126,6 @@ def filter_hypo(combined, go_cutoff):
     mask = (combined["reported"] != 1) & (combined["TOTS"] < go_cutoff)
     filt = combined.drop(combined[mask].index)
     after = filt[filt['reported'] != 1].shape[0]
-    print(go_cutoff)
     print(f"Number of positive complex hypotheses before filtering: {before}")
     print(f"Number of positive complex hypotheses after filtering: {after}")
     return filt

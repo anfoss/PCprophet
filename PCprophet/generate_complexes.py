@@ -88,8 +88,9 @@ def complex_from_clusters(idx_to_gn, clusters):
 def rec_mcl(path):
     df = pd.read_csv(path, sep="\t")
     G = nx.from_pandas_edgelist(df, source="protein1", target="protein2")
+    G.remove_edges_from(nx.selfloop_edges(G))
+    G.remove_nodes_from(list(nx.isolates(G)))
     nodelist = list(G.nodes())
-
     # need to pass the order or csr matrix is random
     matrix = csr_matrix(nx.to_scipy_sparse_array(G, nodelist=nodelist))
 
@@ -293,9 +294,10 @@ def runner(infile, db, is_ppi, hypothesis):
         if not os.path.exists(ppi_path):
             print('PPI network detected, performing network clustering')
             rec_mcl(db)
+            print('Generated complex database from PPI network')
+
 
         db = ppi_path
-        print('Generated complex database from PPI network')
     db = pd.read_csv(db, sep='\t')
     
     ## need to put also gene_name in uppercase
@@ -335,6 +337,9 @@ def runner(infile, db, is_ppi, hypothesis):
     db_prot.to_csv(os.path.join(base, "ann_cmplx.txt"), sep="\t", index=False)
     # Print number of mapped complexes
     num_mapped = db_prot['complex_id'].nunique()
+    if num_mapped == 0:
+        print("No complexes could be mapped to {}. Please check your input files.".format(infile))
+        sys.exit(1)
     print(f"Number of complexes mapped: {num_mapped}")
     
     
