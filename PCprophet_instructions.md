@@ -36,6 +36,11 @@ See `test/test_fract.txt` for examples.
 *NOTE*: while called *gene_name* no lookup is done to confirm gene_names are
 used. Any identifier works as long as it matches into *subunits_gene_name*
 
+*NOTE*: Several search engines report protein groups concatenated by a
+semicolumn. Replace it with another separator (like . or _ ) because ; defines
+complex subunits as well so number of subunits per complex gets inflated due to
+the mixup between protein group components and protein complex subunits
+
 ---
 
 ## Parameter Overview
