@@ -67,6 +67,7 @@ python3 main.py --help
 | `-output`    | Output folder path                               | `./Output`                  |
 | `-cal`       | Calibration file (fraction to MW)                | None                        |
 | `-mw_uniprot`| Uniprot-based mass file                          | None                        |
+| `-mode`      | `complex` (default) or `ppi` pairwise mode       | complex                     |
 | `-v`         | Verbose output                                   | 1                           |
 | `-skip`      | Skip feature generation                          | False                       |
 | `-dif`       | Run differential analysis                        | True                        |
@@ -77,7 +78,7 @@ python3 main.py --help
 |------------|----------------------------------------------------|---------|
 | `-is_ppi`  | Use PPI network instead of complex DB              | False   |
 | `-a`       | Use all or subset of fractions                     | all     |
-| `-ma`      | Hypothesis generation mode (`all` or `reference`)  | all     |
+| `-use`     | Hypothesis generation (`all` or `reference`)       | all     |
 
 #### Post-processing
 
@@ -137,10 +138,11 @@ If a PPI is used (`-is_ppi True`), PCprophet clusters it using MCL and assigns I
 | `SUPER`| Keep superset (most members) |
 | `CAL`  | Match to MW using calibration file and uniprot data |
 | `eCAL`  | Fit fraction number to number of subunits. A good proxy if there are complexes in the whole MW range and no calibration is available |
-
 | `NONE` | Keep all |
 
 > **Recommendation:** Use `CAL` only if you have a full calibration curve covering the MW range. Otherwise, use `GO`.
+>
+> **CAL inputs:** Pass both `-cal` (fraction→MW table) and `-mw_uniprot` (tab file with `Gene Names` and `Mass`) or CAL will fall back to coarse defaults. For partial MW coverage, prefer `GO` or `PROB`.
 
 ---
 
@@ -158,10 +160,10 @@ With custom FDR and skipping feature generation:
 python3 main.py -skip True -fdr 0.5
 ```
 
-With a PPI network:
+With a PPI network (pairwise mode):
 
 ```bash
-python3 main.py -db myppi.txt -is_ppi True
+python3 main.py -db myppi.txt -is_ppi True -mode ppi
 ```
 
 ---
@@ -198,10 +200,16 @@ All outputs are saved in:
 
 ## 🛠 Common Errors
 
-| Error | Cause |
-|-------|-------|
-| `MissingColumnError` | Missing `gene_name` or `protein_id` |
-| `DuplicateRowError` | Duplicate gene names (e.g., isoforms). Add `_1` suffix to resolve |
+| Error / Message | Likely Cause / Fix |
+|-----------------|--------------------|
+| `MissingColumnError` | Required column missing (e.g., `gene_name`/`protein_id` in input; `cond`/`short_id`/`repl`/`fr` in sample_ids; `complex_id`/`complex_name`/`subunits_gene_name` in DB). Add the column with correct header. |
+| `EmptyColumnError` | A required column has blank/NA values. Fill or drop empty rows. |
+| `DuplicateIdentifierError` | Duplicate keys (e.g., same `gene_name`, or same `short_id`+`repl`+`fr`). Deduplicate or rename clashes (e.g., add `_1`). |
+| `ConditionError` | `cond` column missing `Ctrl`, missing `Treat1`, or Treat labels not sequential (Treat1..K) or extra labels present. Fix `cond` values. |
+| `NaInMatrixError` | NA/NaN in intensity matrix. Replace with 0 or remove rows. |
+| `No complexes could be mapped…` | Gene names in input don’t match DB; check casing (PCprophet uppercases gene_name) and DB formatting. |
+| `No differential analysis performed, only control samples found.` | All `cond` values are `Ctrl`; add treatment labels or skip differential. |
+| PPI mode still slow | Pass `-mode ppi` so pairwise fast path is used during collapse. |
 
 ---
 

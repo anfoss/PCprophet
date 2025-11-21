@@ -24,7 +24,7 @@ def overlap_net(ppi_network, mb, over=0.5):
     Calculates overlap between a PPI network and a complex (list of proteins).
     Returns True if >=over fraction of pairs are present in network.
     """
-    mb = re.split(r"#", mb)
+    mb = [m.upper() for m in re.split(r"#", mb)]
     if len(mb) < 2:
         return True
     match, nomatch = 0, 0
@@ -45,12 +45,13 @@ def calc_pdf(decoy):
     clf = GaussianMixture(
         n_components=2,
         covariance_type="full",
-        tol=1e-24,
-        max_iter=1000,
+        tol=1e-6,
+        max_iter=500,
         random_state=42,
     )
-    pred_ = clf.fit(X).predict(X.reshape(-1, 1)).reshape(-1, 1)
-    return np.hstack((X, pred_))
+    clf.fit(X)
+    labels = clf.predict(X).reshape(-1, 1)
+    return np.hstack((X, labels))
 
 
 def split_posterior(X):
@@ -60,7 +61,7 @@ def split_posterior(X):
     """
     d0 = X[X[:, 1] == 0][:, 0]
     d1 = X[X[:, 1] == 1][:, 0]
-    if np.max(d0) > np.max(d1):
+    if np.mean(d0) > np.mean(d1):
         return d0, d1
     else:
         return d1, d0
@@ -71,14 +72,22 @@ def fdr_from_pep(tp, fp, target_fdr=0.5):
     Estimate FDR from TP and FP distributions.
     FDR(p) = #FP >= p / (#FP >= p + #TP >= p)
     """
-    def fdr_point(p, fp, tp):
-        fps = fp[fp >= p].shape[0]
-        tps = tp[tp >= p].shape[0]
-        return fps / (fps + tps) if (fps + tps) else 1.0
+    if tp.size == 0 and fp.size == 0:
+        return np.array([]), 0
 
-    roll_fdr = np.vectorize(lambda p: fdr_point(p, fp, tp))
-    fdr = roll_fdr(fp)
-    cutoff = np.percentile(fp, target_fdr * 100)
+    # Evaluate FDR on the union of TP/FP score thresholds (descending)
+    thresholds = np.sort(np.unique(np.concatenate([tp, fp])))[::-1]
+    tp_counts = np.array([(tp >= t).sum() for t in thresholds], dtype=float)
+    fp_counts = np.array([(fp >= t).sum() for t in thresholds], dtype=float)
+    fdr_curve = np.where(tp_counts + fp_counts > 0, fp_counts / (tp_counts + fp_counts), 1.0)
+    # enforce monotonicity from high score to low score
+    fdr_curve = np.minimum.accumulate(fdr_curve[::-1])[::-1]
+
+    threshold_to_fdr = dict(zip(thresholds, fdr_curve))
+    fdr = np.array([threshold_to_fdr[x] for x in fp])
+
+    below = thresholds[fdr_curve <= target_fdr]
+    cutoff = below[-1] if below.size else thresholds[-1]
     return fdr, cutoff
 
 
@@ -126,8 +135,8 @@ def filter_hypo(combined, go_cutoff):
     mask = (combined["reported"] != 1) & (combined["TOTS"] < go_cutoff)
     filt = combined.drop(combined[mask].index)
     after = filt[filt['reported'] != 1].shape[0]
-    print(f"Number of positive complex hypotheses before filtering: {before}")
-    print(f"Number of positive complex hypotheses after filtering: {after}")
+    print(f"Number of positive hypotheses before filtering: {before}")
+    print(f"Number of positive hypotheses after filtering: {after}")
     return filt
 
 
@@ -172,7 +181,7 @@ def fdr_from_GO(cmplx_comb, target_fdr, fdrfile):
         if db_use.empty or np.all(hypo["TOTS"] == 0):
             print("Not enough reported complexes for FDR estimation, using GMM model")
             go_hypo = hypo["TOTS"].values
-            if go_hypo.shape[0] > 0:
+            if go_hypo.shape[0] > 0 and np.unique(go_hypo).shape[0] > 1:
                 predicted = calc_pdf(go_hypo)
                 tp, fp = split_posterior(predicted)
                 fdr_values, cutoff = fdr_from_pep(tp=tp, fp=fp, target_fdr=target_fdr)

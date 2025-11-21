@@ -571,7 +571,7 @@ def create_complex_report(comb_df, stoic_df, sid_df, outfile):
         lambda row: '' if row["is_subcomplex_of"] == row["complex_id"] else row["is_subcomplex_of"],
         axis=1
     )
-
+    mrg = mrg[mrg['is_complex']=='positive']
     mrg.to_csv(outfile, index=False)
     return mrg
 
@@ -925,7 +925,7 @@ def differential_bayes(fl, ids):
     return dif_cmplx, dif_prot
 
 
-def runner(infile, sample_ids, outf, temp, dif):
+def runner(infile, sample_ids, outf, temp, dif, mode='complex'):
     """
     Executes the differential analysis workflow for protein complexes and proteins.
     This function performs the following steps:
@@ -966,7 +966,8 @@ def runner(infile, sample_ids, outf, temp, dif):
     ppi_report_out = os.path.join(outf, "ppi_report.csv")
     print("Creating complex report and PPI report")
     create_complex_report(comb_df, stoic_df, sid_df, outfile=cmplx_report_out)
-    create_ppi_report(cmplx_report_out, ppi_report_out)
+    if mode == 'complex':
+        create_ppi_report(cmplx_report_out, ppi_report_out)
     
     ## if there are only controls no differential analysis
     if sid_df["cond"].nunique() == 1 and sid_df["cond"].values[0] == "Ctrl":

@@ -176,3 +176,5 @@ protein_level/
 PCprophet/process_peptides_single.py
 *.ipynb
 gui.py
+.vscode/
+ppi_db_pairs.txt

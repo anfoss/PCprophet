@@ -10,6 +10,7 @@ import uuid
 import scipy.ndimage as image
 import scipy.signal as signal_processing
 from datetime import datetime
+from itertools import combinations
 
 import PCprophet.io_ as io
 import PCprophet.mcl as mc
@@ -85,7 +86,7 @@ def complex_from_clusters(idx_to_gn, clusters):
     return pd.DataFrame(data, columns=["complex_id", "complex_name", "subunits_gene_name"])
 
 
-def rec_mcl(path):
+def rec_mcl(path, out_path=None):
     df = pd.read_csv(path, sep="\t")
     G = nx.from_pandas_edgelist(df, source="protein1", target="protein2")
     G.remove_edges_from(nx.selfloop_edges(G))
@@ -104,7 +105,72 @@ def rec_mcl(path):
     clusters = mc.get_clusters(opt)
     idx_to_gn = dict(enumerate(nodelist))
     df = complex_from_clusters(idx_to_gn, clusters)
-    df.to_csv(io.resource_path("ppi_db.txt"), sep='\t', index=False)
+    out_path = out_path or io.resource_path("ppi_db.txt")
+    df.to_csv(out_path, sep='\t', index=False)
+
+
+def ppi_edges_to_complexes(df):
+    """
+    Convert a PPI edge list into the complex file format expected downstream.
+    """
+    df = df[['protein1', 'protein2']].copy()
+    df['protein1'] = df['protein1'].astype(str)
+    df['protein2'] = df['protein2'].astype(str)
+    df = df[df['protein1'] != df['protein2']]
+    df['complex_id'] = df['protein1'] + "_" + df['protein2']
+    df['complex_name'] = df['complex_id']
+    df['subunits_gene_name'] = df['protein1'] + ";" + df['protein2']
+    return df[['complex_id', 'complex_name', 'subunits_gene_name']]
+
+
+def flatten_complex_db_to_ppi(df):
+    """
+    Flatten each complex in a DB into all pairwise PPIs.
+    """
+    records = []
+    for _, row in df.iterrows():
+        members = [m for m in str(row['subunits_gene_name']).split(';') if m]
+        members = sorted(set(members))
+        if len(members) < 2:
+            continue
+        complex_id = str(row['complex_id'])
+        complex_label = str(row.get('complex_name', complex_id))
+        for idx, (a, b) in enumerate(combinations(members, 2), start=1):
+            records.append({
+                'complex_id': f"{complex_id}_pair_{idx}",
+                'complex_name': f"{complex_label}_pair_{idx}",
+                'subunits_gene_name': f"{a};{b}",
+            })
+    return pd.DataFrame.from_records(records)
+
+
+def flatten_mapped_complexes_to_pairs(df):
+    """
+    Expand mapped complexes (with profiles) into pairwise complexes.
+    """
+    if df.empty:
+        return df
+    if 'subunits_gene_name' not in df.columns and 'gene_name' in df.columns:
+        df = df.rename(columns={'gene_name': 'subunits_gene_name'})
+    value_cols = [c for c in df.columns if c not in ['complex_id', 'subunits_gene_name', 'protein_id']]
+    pair_records = []
+    for cid, group in df.groupby('complex_id'):
+        members = group[['subunits_gene_name', 'protein_id'] + value_cols].to_dict('records')
+        if len(members) < 2:
+            continue
+        for idx, (m1, m2) in enumerate(combinations(members, 2), start=1):
+            pair_id = f"{cid}__pair_{idx}"
+            for member in (m1, m2):
+                rec = {
+                    'complex_id': pair_id,
+                    'subunits_gene_name': member['subunits_gene_name'],
+                    'protein_id': member['protein_id'],
+                }
+                rec.update({col: member[col] for col in value_cols})
+                pair_records.append(rec)
+    if not pair_records:
+        return pd.DataFrame(columns=df.columns)
+    return pd.DataFrame(pair_records, columns=['complex_id', 'subunits_gene_name', 'protein_id'] + value_cols)
 
 
 def optimize_mcl(matrix, results, clusters):
@@ -116,8 +182,8 @@ def optimize_mcl(matrix, results, clusters):
         qscore = mc.modularity(matrix=result, clusters=clusters)
         if qscore > newmax:
             infl = inflation
-            qscore = newmax
-    return infl
+            newmax = qscore
+    return infl if infl else 2.0
 
 
 def decondense(df, ids):
@@ -233,31 +299,38 @@ def dedup_complexes(df, max_size=30, min_size=2):
 
     # Step 4: Drop duplicates based on canonical_complex_id and protein protein_id
     """
-    protein_sets = (
-    df.groupby('complex_id')['protein_id']
-    .apply(lambda ids: frozenset(ids))
-    .reset_index()
-    )
-    merged = (
-        protein_sets
-        .groupby('protein_id')['complex_id']
-        .apply(lambda x: ','.join(sorted(x)))
-        .to_dict()
-    )
-    id_to_merged = {}
-    for complex_set in protein_sets.groupby('protein_id')['complex_id']:
-        complexes = list(complex_set[1])
-        merged_id = ','.join(sorted(complexes))
-        for cid in complexes:
-            id_to_merged[cid] = merged_id
-    df['complex_id'] = df['complex_id'].map(id_to_merged)
+    if df.empty:
+        return df
+    # Build member sets per complex_id
+    members = df.groupby('complex_id')['protein_id'].apply(lambda ids: tuple(sorted(set(ids))))
+    # Invert to find complexes with identical member sets and give them a shared canonical id
+    member_to_cids = {}
+    for cid, prot_tuple in members.items():
+        member_to_cids.setdefault(prot_tuple, []).append(cid)
+    canonical_map = {
+        cid: ','.join(sorted(member_to_cids[prot_tuple]))
+        for prot_tuple, cid_list in member_to_cids.items()
+        for cid in cid_list
+    }
+    df = df.copy()
+    df['complex_id'] = df['complex_id'].map(canonical_map)
     df.drop_duplicates(subset=['complex_id', 'protein_id'], inplace=True)
     complex_sizes = df.groupby('complex_id')['protein_id'].nunique()
-    return df[df['complex_id'].isin(complex_sizes[(complex_sizes >= min_size) & (complex_sizes < max_size)].index)]
+    keep = complex_sizes[(complex_sizes >= min_size) & (complex_sizes < max_size)].index
+    return df[df['complex_id'].isin(keep)]
 
 
 
 def runner(infile, db, is_ppi, hypothesis, mode):
+    """
+    Generate annotated complexes (or pairwise PPIs) and hypotheses ready for feature extraction.
+
+    mode:
+      - "complex": default complex-level flow. If is_ppi is True, cluster the PPI with MCL to
+        build a complex DB.
+      - "ppi": pairwise flow. If db is a PPI edge list, use it directly; if db is a complex DB
+        or hypotheses, flatten them to all pairwise interactions.
+    """
     # create subfolder tmp/infile
     print(datetime.now())
 
@@ -287,74 +360,91 @@ def runner(infile, db, is_ppi, hypothesis, mode):
     # write transf matrix    
     prot_norm.to_csv(os.path.join(base, "transf_matrix.txt"), sep="\t", encoding="utf-8")
     
+    label = "PPIs" if mode == "ppi" else "complexes"
     
     #### reported complexes
-    if is_ppi == "True":
-        ppi_path = io.resource_path("ppi_db.txt")
-        if mode == "complex":
-            if not os.path.exists(ppi_path):
-                print('PPI network detected, performing network clustering')
-                rec_mcl(db)
-                print('Generated complex database from PPI network')
-        elif mode == "ppi":
-            # need to just concatenate ids and rename, then make a mock complex file
-            db_ppi = pd.read_csv(db, sep='\t')
-            db_ppi['complex_id'] = db_ppi['protein1'].astype(str) + "_" + db_ppi['protein2'].astype(str)
-            db_ppi['subunits_gene_name'] = db_ppi['protein1'].astype(str) + ";" + db_ppi['protein2'].astype(str)
-            db_ppi = db_ppi[['complex_id', 'subunits_gene_name']]
+    ppi_filename = "ppi_db_pairs.txt" if mode == "ppi" else "ppi_db.txt"
+    ppi_path = io.resource_path(ppi_filename)
+    if mode == "ppi":
+        if not os.path.exists(ppi_path):
+            if is_ppi == "True":
+                db_ppi = pd.read_csv(db, sep='\t')
+                db_ppi = ppi_edges_to_complexes(db_ppi)
+                print('PPI mode selected, using provided PPI edges directly')
+            else:
+                db_ppi = pd.read_csv(db, sep='\t')
+                db_ppi = flatten_complex_db_to_ppi(db_ppi)
+                if db_ppi.empty:
+                    print("No pairwise interactions could be generated from the complex database.")
+                    sys.exit(1)
+                print('PPI mode selected, flattened complex database into pairwise interactions')
             db_ppi.to_csv(ppi_path, sep='\t', index=False)
-            print('PPI mode selected, created mock complex database from PPI network')
+        else:
+            print(f'Found existing pairwise DB at {ppi_path}, reusing')
         db = ppi_path
-    elif is_ppi == "False" and mode == "ppi":
-        print("Error: PPI mode selected but is_ppi is set to False. Please check your parameters.")
-        sys.exit(1)
+    elif is_ppi == "True":
+        if not os.path.exists(ppi_path):
+            print('PPI network detected, performing network clustering')
+            rec_mcl(db, out_path=ppi_path)
+            print('Generated complex database from PPI network')
+        db = ppi_path
     
     
     
     db = pd.read_csv(db, sep='\t')
-    
+    if 'complex_name' not in db.columns:
+        db['complex_name'] = db['complex_id']
     
     ## need to put also gene_name in uppercase
-    db['complex_id'] = db['complex_name'].astype(str) + "_" + db['complex_id'].astype(str)
+    def build_complex_id(row):
+        if str(row['complex_name']) == str(row['complex_id']):
+            return str(row['complex_id'])
+        return f"{row['complex_name']}_{row['complex_id']}"
+
+    db['complex_id'] = db.apply(build_complex_id, axis=1)
     db['subunits_gene_name'] = db['subunits_gene_name'].apply(lambda x: [str.upper(y) for y in x.split(';')])
     db = db.explode('subunits_gene_name')
     db = db[['complex_id', 'subunits_gene_name']]
 
-    # Print number of reported complexes available
+    # Print number of reported complexes/PPIs available
     num_available = db['complex_id'].nunique()
-    print(f"{num_available} complexes available")
+    print(f"{num_available} {label} available")
 
     prot_norm = prot_norm.reset_index()
 
-    ## only keep complexes with more than 30% completeness
-    ## TODO add as parameter
-    prc = 0.3
-
     gn = set(prot_norm['gene_name'])
 
-    # Group by complex_id and compute completeness
-    cmplt = (
-        db.groupby('complex_id')['subunits_gene_name']
-        .apply(lambda subunits: sum(g in gn for g in set(subunits)) / len(set(subunits)))
-    )
-    db['completeness'] = db['complex_id'].map(cmplt.to_dict())
-
-    cmplt = cmplt[cmplt > prc].index
-    db = db[db['complex_id'].isin(cmplt)]
+    if mode == "complex":
+        ## only keep complexes with more than 30% completeness
+        ## TODO add as parameter
+        prc = 0.3
+        cmplt = (
+            db.groupby('complex_id')['subunits_gene_name']
+            .apply(lambda subunits: sum(g in gn for g in set(subunits)) / len(set(subunits)))
+        )
+        db['completeness'] = db['complex_id'].map(cmplt.to_dict())
+        cmplt = cmplt[cmplt > prc].index
+        db = db[db['complex_id'].isin(cmplt)]
+    else:
+        # For PPI mode just keep pairs where members are present; completeness is binary.
+        db = db[db['subunits_gene_name'].isin(gn)]
+        db['completeness'] = 1.0
     # db = db.rename(columns={'subunits_gene_name': 'gene_name'})
     db_prot = pd.merge(db, prot_norm, right_on='gene_name', left_on='subunits_gene_name', how='inner').drop(columns=['gene_name'])
+    if mode == "ppi":
+        db_prot = flatten_mapped_complexes_to_pairs(db_prot)
     if is_ppi == 'True':
         max_size=30
     else:
         max_size=1000
     db_prot = dedup_complexes(db_prot, max_size=max_size, min_size=2)
     db_prot.to_csv(os.path.join(base, "ann_cmplx.txt"), sep="\t", index=False)
-    # Print number of mapped complexes
+    # Print number of mapped complexes/PPIs
     num_mapped = db_prot['complex_id'].nunique()
     if num_mapped == 0:
-        print("No complexes could be mapped to {}. Please check your input files.".format(infile))
+        print(f"No {label} could be mapped to {infile}. Please check your input files.")
         sys.exit(1)
-    print(f"Number of complexes mapped: {num_mapped}")
+    print(f"Number of {label} mapped: {num_mapped}")
     
     
     #### hypothesis generation
@@ -368,14 +458,13 @@ def runner(infile, db, is_ppi, hypothesis, mode):
         hypo_prot = dedup_complexes(hypo_prot, max_size=20, min_size=2)
         hypo_prot = hypo_prot.rename(columns={'gene_name': 'subunits_gene_name'})
         print(f"Number of hypothesis generated: {hypo_prot['complex_id'].nunique()}")
+        if mode == "ppi":
+            hypo_prot = flatten_mapped_complexes_to_pairs(hypo_prot)
         merged = pd.concat([db_prot, hypo_prot])
         merged = dedup_complexes(merged, max_size=1000, min_size=2)
-        print(f"Total number of complexes (reported + hypothesis): {merged['complex_id'].nunique()}")
+        print(f"Total number of {label} (reported + hypothesis): {merged['complex_id'].nunique()}")
         merged.to_csv(os.path.join(base, "cmplx_combined.txt"), sep="\t", index=False)
     else:
         db_prot.to_csv(os.path.join(base, "cmplx_combined.txt"), sep="\t", index=False)
     return True
 
-
-if __name__ == "__main__":
-    main()

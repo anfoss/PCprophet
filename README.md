@@ -34,7 +34,7 @@ Refer to the [PCprophet_instructions.md](https://github.com/anfoss/PCprophet/blo
 ### Mode Flag (`-mode`)
 
 - `complex` (default): When `-is_ppi True`, clusters the input PPI network with Markov clustering to generate a complex database for complex-level prediction.
-- `ppi`: Enables pairwise PPI prediction; only valid when `-is_ppi True`. Uses the provided PPI edges directly (no clustering) by treating each interaction as a two-protein complex.
+- `ppi`: Enables pairwise PPI prediction. PPI edge lists are used as-is (no clustering); complex databases and generated hypotheses are flattened to all pairwise interactions so you can run PPI scoring even when starting from a complex file. Deduplication collapses repeated pairs regardless of order.
 
 Example: `python3 main.py -db myppi.txt -is_ppi True -mode ppi`
 

@@ -124,6 +124,14 @@ def create_config():
         default='False',
     )
     parser.add_argument(
+        '-mode',
+        help='complex or ppi mode',
+        dest='mode',
+        action='store',
+        choices=['complex', 'ppi'],
+        default='complex',
+    )
+    parser.add_argument(
         '-fdr',
         help='false discovery rate for novel complexes',
         dest='fdr',
@@ -174,7 +182,8 @@ def create_config():
         'temp': r'./tmp',
         'skip': args.skip,
         'is_pep': args.peptide,
-        'diff': args.dif
+        'diff': args.dif,
+        'mode': args.mode,
     }
     config['PREPROCESS'] = {
         'is_ppi': args.is_ppi,
@@ -195,6 +204,7 @@ def preprocessing(infile, config):
         db=config['GLOBAL']['db'],
         is_ppi=config['PREPROCESS']['is_ppi'],
         hypothesis=config['PREPROCESS']['merge'],
+        mode=config['GLOBAL']['mode']
     )
     #  # sample specific folder
     tmp_folder = io.file2folder(infile, prefix=config['GLOBAL']['temp'])
@@ -229,16 +239,18 @@ def run_from_gui(config_dict):
         cal=config['GLOBAL']['cal'],
         mw=config['GLOBAL']['mw'],
         fdr=config['POSTPROCESS']['fdr'],
-        mode=config['POSTPROCESS']['collapse_mode'],
-        mrg=config['PREPROCESS']['merge']
+        collapse_mode=config['POSTPROCESS']['collapse_mode'],
+        mrg=config['PREPROCESS']['merge'],
+        pipeline_mode=config['GLOBAL']['mode'],
     )
     combined_file = os.path.join(config['GLOBAL']['temp'], 'combined.txt')
     differential.runner(
-        combined_file,
-        config['GLOBAL']['sid'],
-        config['GLOBAL']['output'],
-        config['GLOBAL']['temp'],
-        config['GLOBAL']['diff'],
+        infile=combined_file,
+        sample_ids=config['GLOBAL']['sid'],
+        outf=config['GLOBAL']['output'],
+        temp=config['GLOBAL']['temp'],
+        dif=config['GLOBAL']['diff'],
+        mode=config['GLOBAL']['mode']
     )
 
 
@@ -246,7 +258,7 @@ def main():
     config = create_config()
 
     ## add logging
-    log_out = f"log_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.log"
+    log_out = f"log_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log"
     log_file = open(log_out, "w")
     sys.stdout = Tee(sys.__stdout__, log_file)
     sys.stderr = Tee(sys.__stderr__, log_file)
@@ -274,8 +286,9 @@ def main():
         cal=config['GLOBAL']['cal'],
         mw=config['GLOBAL']['mw'],
         fdr=config['POSTPROCESS']['fdr'],
-        mode=config['POSTPROCESS']['collapse_mode'],
-        mrg=config['PREPROCESS']['merge']
+        collapse_mode=config['POSTPROCESS']['collapse_mode'],
+        mrg=config['PREPROCESS']['merge'],
+        pipeline_mode=config['GLOBAL']['mode'],
     )
     combined_file = os.path.join(config['GLOBAL']['temp'], 'combined.txt')
     differential.runner(
@@ -284,6 +297,7 @@ def main():
         config['GLOBAL']['output'],
         config['GLOBAL']['temp'],
         config['GLOBAL']['diff'],
+        config['GLOBAL']['mode'],
     )
 
 if __name__ == '__main__':

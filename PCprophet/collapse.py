@@ -389,13 +389,14 @@ class MultiExperiment(object):
     collapse multiple PCProphetExperiments into a single 'combined.txt'
     """
 
-    def __init__(self):
+    def __init__(self, mode="complex"):
         super(MultiExperiment, self).__init__()
         self.allexps = []
         self.all_hypo = None
         self.complex_c_all = None
         self.protein_c = None
         self.common_hypo = {}
+        self.mode = str(mode).lower()
 
     def add_exps(self, exp):
         self.allexps.append(exp)
@@ -420,10 +421,25 @@ class MultiExperiment(object):
             None
         """
         # TODO needs to save somewhere a dict of complex_ids to new complex ids name
-        allhypo = pd.concat([exp.get_hypo() for exp in self.allexps])
+        allhypo = pd.concat([exp.get_hypo() for exp in self.allexps], ignore_index=True)
+        if allhypo.empty:
+            self.all_hypo = pd.DataFrame()
+            return
         # this is only for later splitting to make sure there is no other $
         names = [f"{idx}${cond_rep}" for idx, cond_rep in zip(allhypo.index, allhypo["cond_rep"])]
         allhypo["nm"] = names
+        member_lists = allhypo["members"].astype(str).str.split("#")
+        # Fast path for PPI mode (pairwise only): skip heavy graph construction.
+        if self.mode == "ppi":
+            canonical = member_lists.map(lambda vals: "#".join(sorted(set(vals))))
+            unique_ids = {m: f"cmplx__{i+1}" for i, m in enumerate(pd.unique(canonical))}
+            allhypo["complex_id"] = canonical.map(unique_ids)
+            # remember mapping for downstream protein_centric_combine
+            nm_map = dict(zip(allhypo["nm"], allhypo["complex_id"]))
+            base_nm_map = {k.split("$")[0]: v for k, v in nm_map.items()}
+            self.common_hypo.update(base_nm_map)
+            self.all_hypo = allhypo
+            return
         annot_gr = self.simil_graph_weight(allhypo, names)
         # now we need to uniform the name across all annotation
         tosub = []
@@ -541,7 +557,13 @@ class MultiExperiment(object):
         return self.protein_c
     
     def calc_subcomplexes(self):
-        self.complex_c_all["member_set"] = self.complex_c_all["members"].str.split("#").map(set)
+        member_sets = self.complex_c_all["members"].str.split("#").map(set)
+        # Pairwise-only (PPI) mode: no meaningful subcomplex
+        if self.mode == "ppi":
+            self.complex_c_all["is_subcomplex_of"] = None
+            return
+
+        self.complex_c_all["member_set"] = member_sets
         ids = self.complex_c_all["complex_id"].values
         sets = self.complex_c_all["member_set"].values
         subcomplex_targets = []
@@ -603,7 +625,7 @@ def calc_calibration(calpath):
     return dict(zip(cal_d['fraction'], cal_d['molecular_weight_kda']))
 
 
-def runner(tmp_, ids, cal, mw, fdr, mode, mrg):
+def runner(tmp_, ids, cal, mw, fdr, collapse_mode, mrg, pipeline_mode="complex"):
     """
     read folder tmp in directory.
     then loop for each file and create a combined file which contains all files
@@ -626,7 +648,7 @@ def runner(tmp_, ids, cal, mw, fdr, mode, mrg):
             cal = calc_calibration(cal)
     except TypeError as e:
         pass
-    allexps = MultiExperiment()
+    allexps = MultiExperiment(mode=pipeline_mode)
     for smpl in dir_:
         base = os.path.basename(os.path.normpath(smpl))
         if not exp_info.get(base, None):
@@ -661,7 +683,7 @@ def runner(tmp_, ids, cal, mw, fdr, mode, mrg):
             # skip fdr
             fdr = -1
         exp.calc_fdr(fdr)
-        exp.collapse_hypo(mode=mode)
+        exp.collapse_hypo(mode=collapse_mode)
         exp.peaks_inte_combine()
         allexps.add_exps(exp)
     print("Combining all experiments")
