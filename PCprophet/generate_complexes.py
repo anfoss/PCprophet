@@ -257,7 +257,7 @@ def dedup_complexes(df, max_size=30, min_size=2):
 
 
 
-def runner(infile, db, is_ppi, hypothesis):
+def runner(infile, db, is_ppi, hypothesis, mode):
     # create subfolder tmp/infile
     print(datetime.now())
 
@@ -291,14 +291,28 @@ def runner(infile, db, is_ppi, hypothesis):
     #### reported complexes
     if is_ppi == "True":
         ppi_path = io.resource_path("ppi_db.txt")
-        if not os.path.exists(ppi_path):
-            print('PPI network detected, performing network clustering')
-            rec_mcl(db)
-            print('Generated complex database from PPI network')
-
-
+        if mode == "complex":
+            if not os.path.exists(ppi_path):
+                print('PPI network detected, performing network clustering')
+                rec_mcl(db)
+                print('Generated complex database from PPI network')
+        elif mode == "ppi":
+            # need to just concatenate ids and rename, then make a mock complex file
+            db_ppi = pd.read_csv(db, sep='\t')
+            db_ppi['complex_id'] = db_ppi['protein1'].astype(str) + "_" + db_ppi['protein2'].astype(str)
+            db_ppi['subunits_gene_name'] = db_ppi['protein1'].astype(str) + ";" + db_ppi['protein2'].astype(str)
+            db_ppi = db_ppi[['complex_id', 'subunits_gene_name']]
+            db_ppi.to_csv(ppi_path, sep='\t', index=False)
+            print('PPI mode selected, created mock complex database from PPI network')
         db = ppi_path
+    elif is_ppi == "False" and mode == "ppi":
+        print("Error: PPI mode selected but is_ppi is set to False. Please check your parameters.")
+        sys.exit(1)
+    
+    
+    
     db = pd.read_csv(db, sep='\t')
+    
     
     ## need to put also gene_name in uppercase
     db['complex_id'] = db['complex_name'].astype(str) + "_" + db['complex_id'].astype(str)

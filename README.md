@@ -31,6 +31,13 @@ If you're having trouble adding Anaconda or Python to your PATH, refer to these 
 
 Refer to the [PCprophet_instructions.md](https://github.com/anfoss/PCprophet/blob/dev-branch/PCprophet_instructions.md) for a complete guide on how to prepare data, configure parameters, and run the full analysis pipeline.
 
+### Mode Flag (`-mode`)
+
+- `complex` (default): When `-is_ppi True`, clusters the input PPI network with Markov clustering to generate a complex database for complex-level prediction.
+- `ppi`: Enables pairwise PPI prediction; only valid when `-is_ppi True`. Uses the provided PPI edges directly (no clustering) by treating each interaction as a two-protein complex.
+
+Example: `python3 main.py -db myppi.txt -is_ppi True -mode ppi`
+
 ## License
 
 This project is licensed under the MIT License – see the [LICENSE.md](LICENSE.md) file for details.
